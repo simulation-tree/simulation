@@ -8,12 +8,12 @@ worlds that the simulator is aware of:
 ```cs
 public unsafe readonly struct ExampleSystem : ISystem
 {
-    readonly InitializeFunction ISystem.Initialize => new(&Initialize);
-    readonly IterateFunction ISystem.Iterate => new(&Iterate);
-    readonly FinalizeFunction ISystem.Finalize => new(&Finalize);
+    readonly StartSystem ISystem.Start => new(&Start);
+    readonly UpdateSystem ISystem.Update => new(&Update);
+    readonly FinishSystem ISystem.Finish => new(&Finish);
 
     [UnmanagedCallersOnly]
-    private static void Initialize(SystemContainer container, World world)
+    private static void Start(SystemContainer container, World world)
     {
         if (container.World == world)
         {
@@ -23,7 +23,7 @@ public unsafe readonly struct ExampleSystem : ISystem
     }
 
     [UnmanagedCallersOnly]
-    private static void Iterate(SystemContainer container, World world, TimeSpan delta)
+    private static void Update(SystemContainer container, World world, TimeSpan delta)
     {
         if (container.World == world)
         {
@@ -33,7 +33,7 @@ public unsafe readonly struct ExampleSystem : ISystem
     }
 
     [UnmanagedCallersOnly]
-    private static void Finalize(SystemContainer container, World world)
+    private static void Finish(SystemContainer container, World world)
     {
         if (container.World == world)
         {
@@ -70,9 +70,9 @@ from the simulator's world:
 ```cs
 public unsafe readonly struct ExampleProgram : IProgram
 {
-    readonly StartFunction IProgram.Start => new(&Start);
-    readonly UpdateFunction IProgram.Update => new(&Update);
-    readonly FinishFunction IProgram.Finish => new(&Finish);
+    readonly StartProgram IProgram.Start => new(&Start);
+    readonly UpdateProgram IProgram.Update => new(&Update);
+    readonly FinishProgram IProgram.Finish => new(&Finish);
 
     private ExampleProgram() { }
 
