@@ -18,11 +18,11 @@ namespace Simulation
         /// <summary>
         /// Gets the state of the program.
         /// </summary>
-        public readonly ProgramState State => entity.GetComponent<ProgramState>();
+        public readonly IsProgram.State State => entity.GetComponent<IsProgram>().state;
 
         readonly uint IEntity.Value => entity.GetEntityValue();
         readonly World IEntity.World => entity.GetWorld();
-        readonly Definition IEntity.Definition => new Definition().AddComponentTypes<IsProgram, ProgramState>();
+        readonly Definition IEntity.Definition => new Definition().AddComponentType<IsProgram>();
 
         /// <summary>
         /// Creates a new program in the given <see cref="World"/>.
@@ -31,7 +31,6 @@ namespace Simulation
         {
             entity = new(world);
             entity.AddComponent(new IsProgram(start, update, finish, typeSize));
-            entity.AddComponent(ProgramState.Uninitialized);
         }
 
         /// <summary>
@@ -48,9 +47,9 @@ namespace Simulation
         /// </summary>
         public readonly bool IsFinished(out uint returnCode)
         {
-            if (State == ProgramState.Finished)
+            if (State == IsProgram.State.Finished)
             {
-                returnCode = entity.GetComponent<uint>();
+                returnCode = entity.GetComponent<ReturnCode>().value;
                 return true;
             }
             else
@@ -67,7 +66,17 @@ namespace Simulation
         {
             ThrowIfNotInitialized();
             ref ProgramAllocation allocation = ref entity.GetComponentRef<ProgramAllocation>();
-            return ref allocation.value.Read<T>();
+            return ref allocation.allocation.Read<T>();
+        }
+
+        /// <summary>
+        /// Marks this program as uninitialized, and to have itself restarted
+        /// by a <see cref="Simulator"/>.
+        /// </summary>
+        public readonly void Restart()
+        {
+            ref IsProgram program = ref entity.GetComponentRef<IsProgram>();
+            program.state = IsProgram.State.Uninitialized;
         }
 
         /// <summary>
@@ -78,9 +87,9 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfNotInitialized()
         {
-            if (State == ProgramState.Uninitialized)
+            if (State == IsProgram.State.Uninitialized)
             {
-                throw new InvalidOperationException($"Program `{entity}` is not initialized");
+                throw new InvalidOperationException($"Program `{entity}` is not yet initialized");
             }
         }
 

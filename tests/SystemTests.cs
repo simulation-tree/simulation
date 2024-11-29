@@ -8,6 +8,14 @@ namespace Simulation.Tests
 {
     public class SystemTests : SimulationTests
     {
+        protected override void SetUp()
+        {
+            base.SetUp();
+            ComponentType.Register<FixedString>();
+            ComponentType.Register<uint>();
+            ComponentType.Register<bool>();
+        }
+
         [Test]
         public void SimpleTest()
         {

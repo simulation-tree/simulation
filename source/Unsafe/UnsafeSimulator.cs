@@ -17,7 +17,7 @@ namespace Simulation
         private DateTime lastUpdateTime;
         private List<SystemContainer> systems;
         private List<ProgramContainer> knownPrograms;
-        private ComponentQuery<IsProgram, ProgramState> programQuery;
+        private ComponentQuery<IsProgram> programQuery;
 
         /// <summary>
         /// Allocates a new <see cref="UnsafeSimulator"/> instance.
@@ -89,7 +89,7 @@ namespace Simulation
         /// <summary>
         /// Retrieves the query for programs in a <see cref="UnsafeSimulator"/>.
         /// </summary>
-        public static ref ComponentQuery<IsProgram, ProgramState> GetProgramQuery(UnsafeSimulator* simulator)
+        public static ref ComponentQuery<IsProgram> GetProgramQuery(UnsafeSimulator* simulator)
         {
             Allocations.ThrowIfNull(simulator);
 

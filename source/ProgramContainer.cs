@@ -29,10 +29,10 @@ namespace Simulation
         /// <summary>
         /// The <see cref="World"/> that belongs to this program.
         /// </summary>
-        public readonly World programWorld;
+        public readonly World world;
 
         /// <summary>
-        /// The entity that initialized this program.
+        /// The entity in the <see cref="Simulator"/> world that initialized this program.
         /// </summary>
         public readonly Entity program;
 
@@ -49,12 +49,12 @@ namespace Simulation
         /// <summary>
         /// Initializes a new instance of the <see cref="ProgramContainer"/> struct.
         /// </summary>
-        public ProgramContainer(IsProgram component, World programWorld, Entity program, Allocation allocation)
+        public ProgramContainer(IsProgram component, World world, Entity program, Allocation allocation)
         {
             start = component.start;
             finish = component.finish;
             update = component.update;
-            this.programWorld = programWorld;
+            this.world = world;
             this.program = program;
             this.allocation = allocation;
         }

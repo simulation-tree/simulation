@@ -77,18 +77,17 @@ namespace Simulation
             World hostWorld = World;
 
             //finalize program worlds
-            ref ComponentQuery<IsProgram, ProgramState> query = ref UnsafeSimulator.GetProgramQuery(value);
+            ref ComponentQuery<IsProgram> query = ref UnsafeSimulator.GetProgramQuery(value);
             query.Update(World, true);
             foreach (var x in query)
             {
                 uint programEntity = x.entity;
-                if (!hostWorld.ContainsComponent<uint>(programEntity))
+                if (!hostWorld.ContainsComponent<ReturnCode>(programEntity))
                 {
-                    World programWorld = hostWorld.GetComponent<World>(programEntity);
-                    ProgramAllocation allocation = programWorld.GetComponent<ProgramAllocation>(programEntity);
-                    x.Component1.finish.Invoke(this, allocation.value, programWorld, default);
-                    ref ProgramState state = ref x.Component2;
-                    state = ProgramState.Finished;
+                    ref ProgramAllocation allocation = ref hostWorld.GetComponentRef<ProgramAllocation>(programEntity);
+                    ref IsProgram.State state = ref x.Component1.state;
+                    state = IsProgram.State.Finished;
+                    x.Component1.finish.Invoke(this, allocation.allocation, allocation.world, default);
                 }
             }
 
@@ -105,7 +104,7 @@ namespace Simulation
             for (uint i = knownPrograms.Count - 1; i != uint.MaxValue; i--)
             {
                 ref ProgramContainer program = ref knownPrograms[i];
-                program.programWorld.Dispose();
+                program.world.Dispose();
                 program.allocation.Dispose();
             }
 
@@ -122,7 +121,7 @@ namespace Simulation
                 if (!program.finished && program.program.IsDestroyed())
                 {
                     program.finished = true;
-                    program.finish.Invoke(this, program.allocation, program.programWorld, default);
+                    program.finish.Invoke(this, program.allocation, program.world, default);
                 }
             }
         }
@@ -172,14 +171,23 @@ namespace Simulation
                 ref ProgramContainer programContainer = ref knownPrograms[p];
                 if (!programContainer.finished)
                 {
-                    World programWorld = programContainer.programWorld;
+                    World programWorld = programContainer.world;
                     Allocation allocation = programContainer.allocation;
                     uint returnCode = programContainer.update.Invoke(this, allocation, programWorld, delta);
                     if (returnCode != default)
                     {
-                        //program finished
-                        programContainer.program.SetComponent(ProgramState.Finished);
-                        programContainer.program.AddComponent(returnCode);
+                        //program has finished because return code was non 0
+                        ref IsProgram component = ref programContainer.program.GetComponentRef<IsProgram>();
+                        component.state = IsProgram.State.Finished;
+                        if (programContainer.program.ContainsComponent<ReturnCode>())
+                        {
+                            programContainer.program.SetComponent(new ReturnCode(returnCode));
+                        }
+                        else
+                        {
+                            programContainer.program.AddComponent(new ReturnCode(returnCode));
+                        }
+
                         programContainer.finished = true;
                         programContainer.finish.Invoke(this, allocation, programWorld, returnCode);
                     }
@@ -216,7 +224,7 @@ namespace Simulation
                 ref ProgramContainer programContainer = ref knownPrograms[p];
                 if (!programContainer.finished)
                 {
-                    World programWorld = programContainer.programWorld;
+                    World programWorld = programContainer.world;
                     for (uint s = 0; s < systems.Length; s++)
                     {
                         ref SystemContainer system = ref systems[s];
@@ -249,18 +257,18 @@ namespace Simulation
             }
 
             //tell program worlds
-            ref ComponentQuery<IsProgram, ProgramState> query = ref UnsafeSimulator.GetProgramQuery(value);
+            ref ComponentQuery<IsProgram> query = ref UnsafeSimulator.GetProgramQuery(value);
             query.Update(hostWorld, true);
             foreach (var x in query)
             {
                 uint programEntity = x.entity;
                 if (!hostWorld.ContainsComponent<uint>(programEntity))
                 {
-                    World programWorld = hostWorld.GetComponent<World>(programEntity);
+                    ProgramAllocation programAllocation = hostWorld.GetComponent<ProgramAllocation>(programEntity);
                     for (uint i = 0; i < systems.Length; i++)
                     {
                         ref SystemContainer system = ref systems[i];
-                        handled |= system.TryHandleMessage(programWorld, messageType, messageContainer);
+                        handled |= system.TryHandleMessage(programAllocation.world, messageType, messageContainer);
                     }
                 }
             }
@@ -275,7 +283,7 @@ namespace Simulation
             for (uint p = 0; p < knownPrograms.Count; p++)
             {
                 ref ProgramContainer programContainer = ref knownPrograms[p];
-                World programWorld = programContainer.programWorld;
+                World programWorld = programContainer.world;
                 for (uint s = 0; s < systems.Length; s++)
                 {
                     ref SystemContainer system = ref systems[s];
@@ -287,27 +295,48 @@ namespace Simulation
             }
         }
 
+        /// <summary>
+        /// Makes uninitialized programs active, and ensures they have
+        /// their own world and allocations created for.
+        /// </summary>
         private readonly void InitializePrograms()
         {
             World hostWorld = World;
             ref List<ProgramContainer> knownPrograms = ref UnsafeSimulator.GetKnownPrograms(value);
-            ref ComponentQuery<IsProgram, ProgramState> query = ref UnsafeSimulator.GetProgramQuery(value);
+            ref ComponentQuery<IsProgram> query = ref UnsafeSimulator.GetProgramQuery(value);
             query.Update(hostWorld, true);
             foreach (var x in query)
             {
                 Entity program = new(hostWorld, x.entity);
-                if (!program.ContainsComponent<World>())
+                ref IsProgram component = ref x.Component1;
+                if (component.state == IsProgram.State.Uninitialized)
                 {
-                    World newProgramWorld = new();
-                    ref ProgramState state = ref x.Component2;
-                    state = ProgramState.Active;
-                    Allocation programAllocation = new(x.Component1.typeSize);
-                    ProgramContainer programContainer = new(x.Component1, newProgramWorld, program, programAllocation);
-                    program.AddComponent(newProgramWorld);
-                    program.AddComponent(new ProgramAllocation(programAllocation));
-                    knownPrograms.Add(programContainer);
+                    component.state = IsProgram.State.Active;
+                    if (!program.TryGetComponent(out ProgramAllocation programAllocation))
+                    {
+                        World newProgramWorld = new();
+                        Allocation newProgramAllocation = new(component.typeSize);
+                        ProgramContainer programContainer = new(component, newProgramWorld, program, newProgramAllocation);
+                        programAllocation = new(newProgramAllocation, newProgramWorld);
+                        program.AddComponent(programAllocation);
+                        knownPrograms.Add(programContainer);
+                    }
+                    else
+                    {
+                        //reset old existing program
+                        for (uint i = 0; i < knownPrograms.Count; i++)
+                        {
+                            ref ProgramContainer knownProgram = ref knownPrograms[i];
+                            if (knownProgram.allocation == programAllocation.allocation)
+                            {
+                                knownProgram.finished = false;
+                                programAllocation.allocation.Clear(component.typeSize);
+                                programAllocation.world.Clear();
+                            }
+                        }
+                    }
 
-                    programContainer.start.Invoke(this, programAllocation, newProgramWorld);
+                    component.start.Invoke(this, programAllocation.allocation, programAllocation.world);
                 }
             }
         }
