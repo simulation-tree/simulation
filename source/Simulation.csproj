@@ -8,7 +8,20 @@
 		<IsAotCompatible>True</IsAotCompatible>
 		<IsTrimmable>True</IsTrimmable>
 		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+		<Authors>popcron</Authors>
+		<Company>game-simulations</Company>
+		<Description>Logic upon data</Description>
+		<RepositoryUrl>https://github.com/game-simulations/simulation</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>ecs</PackageTags>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <None Include="..\README.md">
+	    <Pack>True</Pack>
+	    <PackagePath>\</PackagePath>
+	  </None>
+	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\worlds\source\Worlds.csproj" />
