@@ -1,4 +1,7 @@
 ﻿using Simulation.Components;
+using System.Threading.Tasks;
+using System.Threading;
+using System;
 using Unmanaged.Tests;
 using Worlds;
 
@@ -27,6 +30,12 @@ namespace Simulation.Tests
             simulator.Dispose();
             world.Dispose();
             base.CleanUp();
+        }
+
+        protected async Task Simulate(World world, CancellationToken cancellation)
+        {
+            TimeSpan delta = Simulator.Update();
+            await Task.Delay(delta, cancellation).ConfigureAwait(false);
         }
     }
 }
