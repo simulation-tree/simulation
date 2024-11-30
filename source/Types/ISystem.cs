@@ -19,7 +19,7 @@ namespace Simulation
         /// Updates the system for <see cref="World"/>s of each program and
         /// the <see cref="Simulator"/>.
         /// </summary>
-        UpdateSimulator Update { get; }
+        UpdateSystem Update { get; }
 
         /// <summary>
         /// Finalizes the system for <see cref="World"/>s of each program and

@@ -109,7 +109,7 @@ namespace Simulation.Tests
             private readonly uint value;
 
             unsafe readonly StartSystem ISystem.Start => new(&Initialize);
-            unsafe readonly UpdateSimulator ISystem.Update => new(&Update);
+            unsafe readonly UpdateSystem ISystem.Update => new(&Update);
             unsafe readonly FinishSystem ISystem.Finish => new(&Finalize);
 
             public SimpleSystem()
@@ -152,7 +152,7 @@ namespace Simulation.Tests
         public readonly struct MessageHandlerSystem : ISystem
         {
             unsafe readonly StartSystem ISystem.Start => new(&Initialize);
-            unsafe readonly UpdateSimulator ISystem.Update => new(&Update);
+            unsafe readonly UpdateSystem ISystem.Update => new(&Update);
             unsafe readonly FinishSystem ISystem.Finish => new(&Finalize);
 
             unsafe readonly uint ISystem.GetMessageHandlers(USpan<MessageHandler> buffer)
@@ -190,7 +190,7 @@ namespace Simulation.Tests
         public readonly struct StackedSystem : ISystem
         {
             unsafe readonly StartSystem ISystem.Start => new(&Initialize);
-            unsafe readonly UpdateSimulator ISystem.Update => new(&Update);
+            unsafe readonly UpdateSystem ISystem.Update => new(&Update);
             unsafe readonly FinishSystem ISystem.Finish => new(&Finalize);
 
             [UnmanagedCallersOnly]

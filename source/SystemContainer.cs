@@ -26,7 +26,7 @@ namespace Simulation
         private readonly List<World> programWorlds;
         private readonly UnsafeSimulator* simulator;
         private readonly StartSystem initialize;
-        private readonly UpdateSimulator update;
+        private readonly UpdateSystem update;
         private readonly FinishSystem finalize;
 
         /// <summary>
@@ -54,7 +54,7 @@ namespace Simulation
         /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        public SystemContainer(UnsafeSimulator* simulator, Allocation system, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem initialize, UpdateSimulator update, FinishSystem finalize)
+        public SystemContainer(UnsafeSimulator* simulator, Allocation system, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem initialize, UpdateSystem update, FinishSystem finalize)
         {
             this.simulator = simulator;
             this.allocation = system;

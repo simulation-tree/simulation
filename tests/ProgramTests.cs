@@ -20,16 +20,13 @@ namespace Simulation.Tests
         [CancelAfter(1000)]
         public void SimpleProgram(CancellationToken token)
         {
-            using World world = new();
-            using Simulator simulator = new(world);
-            Program program = Program.Create<Calculator>(world);
-
+            Program program = Program.Create<Calculator>(World);
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
             uint returnCode;
             do
             {
-                simulator.Update();
+                Simulator.Update();
 
                 ref Calculator calculator = ref program.Read<Calculator>();
                 Console.WriteLine(calculator.value);
@@ -50,18 +47,16 @@ namespace Simulation.Tests
         [Test]
         public void ExitEarly()
         {
-            using World world = new();
-            using Simulator simulator = new(world);
-            Program program = Program.Create<Calculator>(world);
+            Program program = Program.Create<Calculator>(World);
 
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
-            simulator.Update(); //to invoke the initializer and update
+            Simulator.Update(); //to invoke the initializer and update
             ref Calculator calculator = ref program.Read<Calculator>();
 
             Assert.That(calculator.text.ToString(), Is.EqualTo("Running2"));
             program.Dispose();
-            simulator.Update(); //to invoke the finisher
+            Simulator.Update(); //to invoke the finisher
 
             Assert.That(calculator.value, Is.EqualTo(calculator.additive));
             Assert.That(calculator.text.ToString(), Is.EqualTo("Finished0"));
@@ -71,13 +66,11 @@ namespace Simulation.Tests
         [CancelAfter(1000)]
         public void ReRunProgram(CancellationToken token)
         {
-            using World world = new();
-            using Simulator simulator = new(world);
-            Program program = Program.Create<Calculator>(world);
+            Program program = Program.Create<Calculator>(World);
 
             while (!program.IsFinished(out uint returnCode))
             {
-                simulator.Update();
+                Simulator.Update();
                 if (token.IsCancellationRequested)
                 {
                     Assert.Fail("Test took too long");
@@ -91,7 +84,7 @@ namespace Simulation.Tests
 
             while (!program.IsFinished(out uint returnCode))
             {
-                simulator.Update();
+                Simulator.Update();
                 if (token.IsCancellationRequested)
                 {
                     Assert.Fail("Test took too long");
