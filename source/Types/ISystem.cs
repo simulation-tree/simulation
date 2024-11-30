@@ -1,5 +1,6 @@
 ﻿using Simulation.Functions;
 using Unmanaged;
+using Worlds;
 
 namespace Simulation
 {
@@ -9,17 +10,20 @@ namespace Simulation
     public interface ISystem
     {
         /// <summary>
-        /// The function to initialize the system.
+        /// Initializes the system for <see cref="World"/>s of each program and
+        /// the <see cref="Simulator"/>.
         /// </summary>
         StartSystem Start { get; }
 
         /// <summary>
-        /// The function to update the system.
+        /// Updates the system for <see cref="World"/>s of each program and
+        /// the <see cref="Simulator"/>.
         /// </summary>
         UpdateSimulator Update { get; }
 
         /// <summary>
-        /// The function to finalize the system.
+        /// Finalizes the system for <see cref="World"/>s of each program and
+        /// the <see cref="Simulator"/>.
         /// </summary>
         FinishSystem Finish { get; }
 

@@ -136,7 +136,7 @@ namespace Simulation
                         throw new InvalidOperationException($"Message handler at index {i} is uninitialized in system `{typeof(T)}`");
                     }
 
-                    handlers.Add(handler.messageType, handler.function);
+                    handlers.TryAdd(handler.messageType, handler.function);
                 }
             }
             else
