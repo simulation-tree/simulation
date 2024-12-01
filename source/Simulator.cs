@@ -262,7 +262,7 @@ namespace Simulation
             foreach (var x in query)
             {
                 uint programEntity = x.entity;
-                if (!hostWorld.ContainsComponent<uint>(programEntity))
+                if (!hostWorld.ContainsComponent<ReturnCode>(programEntity))
                 {
                     ProgramAllocation programAllocation = hostWorld.GetComponent<ProgramAllocation>(programEntity);
                     for (uint i = 0; i < systems.Length; i++)
