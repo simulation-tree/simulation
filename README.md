@@ -6,36 +6,29 @@ Systems are defined by implementing the `ISystem` interface, and contain
 functions for initializing, iterating, and finalizing the system with all
 worlds that the simulator is aware of:
 ```cs
-public unsafe readonly struct ExampleSystem : ISystem
+public readonly partial struct ExampleSystem : ISystem
 {
-    readonly StartSystem ISystem.Start => new(&Start);
-    readonly UpdateSystem ISystem.Update => new(&Update);
-    readonly FinishSystem ISystem.Finish => new(&Finish);
-
-    [UnmanagedCallersOnly]
-    private static void Start(SystemContainer container, World world)
+    void ISystem.Start(in SystemContainer systemContainer, in World world)
     {
-        if (container.World == world)
+        if (systemContainer.World == world)
         {
             Entity firstEntity = new(world);
             firstEntity.AddComponent(0u);
         }
     }
 
-    [UnmanagedCallersOnly]
-    private static void Update(SystemContainer container, World world, TimeSpan delta)
+    void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
     {
-        if (container.World == world)
+        if (systemContainer.World == world)
         {
             ref uint firstEntityValue = ref world.GetComponentRef<uint>(1);
             firstEntityValue++;
         }
     }
 
-    [UnmanagedCallersOnly]
-    private static void Finish(SystemContainer container, World world)
+    void ISystem.Finish(in SystemContainer systemContainer, in World world)
     {
-        if (container.World == world)
+        if (systemContainer.World == world)
         {
             ref uint firstEntityValue = ref world.GetComponentRef<uint>(1);
             firstEntityValue *= 10;

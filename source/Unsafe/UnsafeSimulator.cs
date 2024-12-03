@@ -114,11 +114,17 @@ namespace Simulation
         {
             Allocations.ThrowIfNull(simulator);
 
+            T template = new();
+            (StartSystem start, UpdateSystem update, FinishSystem finish) = template.Functions;
+            if (start == default || update == default || finish == default)
+            {
+                throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
+            }
+
             World hostWorld = GetWorld(simulator);
             nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            T template = new();
             Allocation instance = Allocation.Create(template);
 
             //add message handlers
@@ -144,7 +150,7 @@ namespace Simulation
                 handlers = new(1);
             }
 
-            SystemContainer container = new(simulator, instance, systemType, handlers, template.Start, template.Update, template.Finish);
+            SystemContainer container = new(simulator, instance, systemType, handlers, start, update, finish);
             simulator->systems.Add(container);
             SystemContainer<T> genericContainer = new(simulator, simulator->systems.Count - 1);
             container.Initialize(hostWorld);

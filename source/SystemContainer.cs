@@ -25,9 +25,9 @@ namespace Simulation
         private readonly Dictionary<nint, HandleMessage> handlers;
         private readonly List<World> programWorlds;
         private readonly UnsafeSimulator* simulator;
-        private readonly StartSystem initialize;
+        private readonly StartSystem start;
         private readonly UpdateSystem update;
-        private readonly FinishSystem finalize;
+        private readonly FinishSystem finish;
 
         /// <summary>
         /// Reference to the <see cref="Simulation.Simulator"/> that this system was created in.
@@ -54,16 +54,16 @@ namespace Simulation
         /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        public SystemContainer(UnsafeSimulator* simulator, Allocation system, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem initialize, UpdateSystem update, FinishSystem finalize)
+        public SystemContainer(UnsafeSimulator* simulator, Allocation system, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
         {
             this.simulator = simulator;
             this.allocation = system;
             this.systemType = systemType;
             this.handlers = handlers;
             programWorlds = new();
-            this.initialize = initialize;
+            this.start = start;
             this.update = update;
-            this.finalize = finalize;
+            this.finish = finish;
         }
 
         /// <summary>
@@ -124,7 +124,7 @@ namespace Simulation
         /// </summary>
         public readonly void Initialize(World programWorld)
         {
-            initialize.Invoke(this, programWorld);
+            start.Invoke(this, programWorld);
             programWorlds.Add(programWorld);
         }
 
@@ -143,7 +143,7 @@ namespace Simulation
         public readonly void Finalize(World programWorld)
         {
             ThrowIfNotInitializedWith(programWorld);
-            finalize.Invoke(this, programWorld);
+            finish.Invoke(this, programWorld);
         }
 
         /// <summary>

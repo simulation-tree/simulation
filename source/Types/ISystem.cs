@@ -1,4 +1,5 @@
 ﻿using Simulation.Functions;
+using System;
 using Unmanaged;
 using Worlds;
 
@@ -9,23 +10,13 @@ namespace Simulation
     /// </summary>
     public interface ISystem
     {
-        /// <summary>
-        /// Initializes the system for <see cref="World"/>s of each program and
-        /// the <see cref="Simulator"/>.
-        /// </summary>
-        StartSystem Start { get; }
-
-        /// <summary>
-        /// Updates the system for <see cref="World"/>s of each program and
-        /// the <see cref="Simulator"/>.
-        /// </summary>
-        UpdateSystem Update { get; }
-
-        /// <summary>
-        /// Finalizes the system for <see cref="World"/>s of each program and
-        /// the <see cref="Simulator"/>.
-        /// </summary>
-        FinishSystem Finish { get; }
+        public (StartSystem start, UpdateSystem update, FinishSystem finish) Functions
+        {
+            get
+            {
+                return default;
+            }
+        }
 
         /// <summary>
         /// Retrieves the message handlers for this system.
@@ -34,5 +25,9 @@ namespace Simulation
         {
             return 0;
         }
+
+        void Start(in SystemContainer systemContainer, in World world);
+        void Update(in SystemContainer systemContainer, in World world, in TimeSpan delta);
+        void Finish(in SystemContainer systemContainer, in World world);
     }
 }

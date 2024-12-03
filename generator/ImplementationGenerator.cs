@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace Simulation.Generator
 {
-    public class Input
+    public abstract class Input
     {
         public readonly TypeDeclarationSyntax typeDeclaration;
         public readonly ITypeSymbol typeSymbol;
@@ -21,6 +21,20 @@ namespace Simulation.Generator
             containingNamespace = typeSymbol.ContainingNamespace.ToDisplayString();
             typeName = typeSymbol.Name;
             fullTypeName = typeSymbol.ToDisplayString();
+        }
+    }
+
+    public class ProgramInput : Input
+    {
+        public ProgramInput(TypeDeclarationSyntax typeDeclaration, ITypeSymbol typeSymbol) : base(typeDeclaration, typeSymbol)
+        {
+        }
+    }
+
+    public class SystemInput : Input
+    {
+        public SystemInput(TypeDeclarationSyntax typeDeclaration, ITypeSymbol typeSymbol) : base(typeDeclaration, typeSymbol)
+        {
         }
     }
 
@@ -51,7 +65,11 @@ namespace Simulation.Generator
                     {
                         if (interfaceSymbol.ToDisplayString() == "Simulation.IProgram")
                         {
-                            return new Input(typeDeclaration, typeSymbol);
+                            return new ProgramInput(typeDeclaration, typeSymbol);
+                        }
+                        else if (interfaceSymbol.ToDisplayString() == "Simulation.ISystem")
+                        {
+                            return new SystemInput(typeDeclaration, typeSymbol);
                         }
                     }
                 }
@@ -92,7 +110,15 @@ namespace Simulation.Generator
 
                 source.BeginGroup();
                 {
-                    source.AppendLine("unsafe readonly (StartProgram start, UpdateProgram update, FinishProgram finish) IProgram.Functions");
+                    if (input is ProgramInput)
+                    {
+                        source.AppendLine("unsafe readonly (StartProgram start, UpdateProgram update, FinishProgram finish) IProgram.Functions");
+                    }
+                    else if (input is SystemInput)
+                    {
+                        source.AppendLine("unsafe readonly (StartSystem start, UpdateSystem update, FinishSystem finish) ISystem.Functions");
+                    }
+
                     source.BeginGroup();
                     {
                         source.AppendLine("get");
@@ -101,31 +127,70 @@ namespace Simulation.Generator
                             source.AppendLine("return (new(&Start), new(&Update), new(&Finish));");
                             source.AppendLine();
                             source.AppendLine("[UnmanagedCallersOnly]");
-                            source.AppendLine("static void Start(Simulator simulator, Allocation allocation, World world)");
-                            source.BeginGroup();
+                            if (input is ProgramInput)
                             {
-                                source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
-                                source.AppendLine("program.Start(in simulator, in allocation, in world);");
+                                source.AppendLine("static void Start(Simulator simulator, Allocation allocation, World world)");
+                                source.BeginGroup();
+                                {
+                                    source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
+                                    source.AppendLine("program.Start(in simulator, in allocation, in world);");
+                                }
+                                source.EndGroup();
                             }
-                            source.EndGroup();
+                            else if (input is SystemInput)
+                            {
+                                source.AppendLine("static void Start(SystemContainer systemContainer, World world)");
+                                source.BeginGroup();
+                                {
+                                    source.AppendLine($"ref {input.typeName} system = ref systemContainer.Read<{input.typeName}>();");
+                                    source.AppendLine("system.Start(in systemContainer, in world);");
+                                }
+                                source.EndGroup();
+                            }
                             source.AppendLine();
                             source.AppendLine("[UnmanagedCallersOnly]");
-                            source.AppendLine("static StatusCode Update(Simulator simulator, Allocation allocation, World world, TimeSpan delta)");
-                            source.BeginGroup();
+                            if (input is ProgramInput)
                             {
-                                source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
-                                source.AppendLine("return program.Update(in delta);");
+                                source.AppendLine("static StatusCode Update(Simulator simulator, Allocation allocation, World world, TimeSpan delta)");
+                                source.BeginGroup();
+                                {
+                                    source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
+                                    source.AppendLine("return program.Update(in delta);");
+                                }
+                                source.EndGroup();
                             }
-                            source.EndGroup();
+                            else if (input is SystemInput)
+                            {
+                                source.AppendLine("static void Update(SystemContainer systemContainer, World world, TimeSpan delta)");
+                                source.BeginGroup();
+                                {
+                                    source.AppendLine($"ref {input.typeName} system = ref systemContainer.Read<{input.typeName}>();");
+                                    source.AppendLine("system.Update(in systemContainer, in world, in delta);");
+                                }
+                                source.EndGroup();
+                            }
                             source.AppendLine();
                             source.AppendLine("[UnmanagedCallersOnly]");
-                            source.AppendLine("static void Finish(Simulator simulator, Allocation allocation, World world, StatusCode statusCode)");
-                            source.BeginGroup();
+                            if (input is ProgramInput)
                             {
-                                source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
-                                source.AppendLine("program.Finish(in statusCode);");
+                                source.AppendLine("static void Finish(Simulator simulator, Allocation allocation, World world, StatusCode statusCode)");
+                                source.BeginGroup();
+                                {
+                                    source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
+                                    source.AppendLine("program.Finish(in statusCode);");
+                                }
+                                source.EndGroup();
                             }
-                            source.EndGroup();
+                            else if (input is SystemInput)
+                            {
+                                source.AppendLine("static void Finish(SystemContainer systemContainer, World world)");
+                                source.BeginGroup();
+                                {
+                                    source.AppendLine($"ref {input.typeName} system = ref systemContainer.Read<{input.typeName}>();");
+                                    source.AppendLine("system.Finish(in systemContainer, in world);");
+                                }
+                                source.EndGroup();
+                            }
                         }
                         source.EndGroup();
                     }
