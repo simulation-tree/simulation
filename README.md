@@ -68,35 +68,41 @@ expose functions that are called by the simulator to start, update, and finish.
 They are operated by a simulator, and have their own world to interact with separate
 from the simulator's world:
 ```cs
-public unsafe readonly struct ExampleProgram : IProgram
+public partial struct ExampleProgram : IProgram
 {
-    readonly StartProgram IProgram.Start => new(&Start);
-    readonly UpdateProgram IProgram.Update => new(&Update);
-    readonly FinishProgram IProgram.Finish => new(&Finish);
+    public int value;
 
-    private ExampleProgram() { }
-
-    [UnmanagedCallersOnly]
-    private static void Start(Simulator simulator, Allocation allocation, World world)
+    public ExampleProgram()
     {
+        value = 100;
+    }
+
+    void IProgram.Start(in Simulator simulator, in Allocation allocation, in World world)
+    {
+        //initialization code
         allocation.Write(new ExampleProgram());
     }
 
-    [UnmanagedCallersOnly]
-    private static uint Update(Simulator simulator, Allocation allocation, World world, TimeSpan delta)
+    StatusCode IProgram.Update(in TimeSpan delta)
     {
-        return 0;
+        if (value > 200)
+        {
+            return StatusCode.Success(0);
+        }
+
+        value++;
+        return StatusCode.Continue;
     }
 
-    [UnmanagedCallersOnly]
-    private static void Finish(Simulator simulator, Allocation allocation, World world, uint returnCode)
+    void IProgram.Finish(in StatusCode statusCode)
     {
+        //finalization code
     }
 }
 
 public static int Main()
 {
-    uint returnCode;
+    StatusCode statusCode;
     using (World world = new())
     {
         using (Simulator simulator = new(world))
@@ -104,16 +110,18 @@ public static int Main()
             simulator.AddSystem<ExampleSystem>();
             using (Program program = Program.Create<ExampleProgram>(world))
             {
-                while (!program.IsFinished(out returnCode))
+                while (!program.IsFinished(out statusCode))
                 {
                     simulator.Update();
                 }
+                
+                Console.WriteLine(program.Read<ExampleProgram>().value);
             }
 
             simulator.RemoveSystem<ExampleSystem>();
         }
     }
 
-    return (int)returnCode;
+    return statusCode.IsSuccess ? 0 : 1;
 }
 ```

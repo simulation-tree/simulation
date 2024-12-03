@@ -10,19 +10,19 @@ namespace Simulation.Functions
     public unsafe readonly struct FinishProgram : IEquatable<FinishProgram>
     {
 #if NET
-        private readonly delegate* unmanaged<Simulator, Allocation, World, uint, void> function;
+        private readonly delegate* unmanaged<Simulator, Allocation, World, StatusCode, void> function;
 
         /// <summary>
         /// Creates a new <see cref="FinishProgram"/>.
         /// </summary>
-        public FinishProgram(delegate* unmanaged<Simulator, Allocation, World, uint, void> function)
+        public FinishProgram(delegate* unmanaged<Simulator, Allocation, World, StatusCode, void> function)
         {
             this.function = function;
         }
 #else
-        private readonly delegate*<Simulator, Allocation, World, uint, void> function;
+        private readonly delegate*<Simulator, Allocation, World, ReturnCode, void> function;
 
-        public FinishProgramFunction(delegate*<Simulator, Allocation, World, uint, void> function)
+        public FinishProgramFunction(delegate*<Simulator, Allocation, World, ReturnCode, void> function)
         {
             this.function = function;
         }
@@ -31,9 +31,9 @@ namespace Simulation.Functions
         /// <summary>
         /// Invokes the function.
         /// </summary>
-        public readonly void Invoke(Simulator simulator, Allocation allocation, World world, uint returnCode)
+        public readonly void Invoke(Simulator simulator, Allocation allocation, World world, StatusCode statusCode)
         {
-            function(simulator, allocation, world, returnCode);
+            function(simulator, allocation, world, statusCode);
         }
 
         /// <inheritdoc/>

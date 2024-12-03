@@ -43,18 +43,18 @@ namespace Simulation
 
         /// <summary>
         /// Checks if the program has finished running
-        /// and outputs the <paramref name="returnCode"/> if finished.
+        /// and outputs the <paramref name="statusCode"/> if finished.
         /// </summary>
-        public readonly bool IsFinished(out uint returnCode)
+        public readonly bool IsFinished(out StatusCode statusCode)
         {
             if (State == IsProgram.State.Finished)
             {
-                returnCode = entity.GetComponent<ReturnCode>().value;
+                statusCode = entity.GetComponent<StatusCode>();
                 return true;
             }
             else
             {
-                returnCode = default;
+                statusCode = default;
                 return false;
             }
         }
@@ -99,7 +99,13 @@ namespace Simulation
         public static Program Create<T>(World world) where T : unmanaged, IProgram
         {
             T template = default;
-            return new Program(world, template.Start, template.Update, template.Finish, (ushort)TypeInfo<T>.size);
+            (StartProgram start, UpdateProgram update, FinishProgram finish) = template.Functions;
+            if (start == default || update == default || finish == default)
+            {
+                throw new InvalidOperationException($"Program `{typeof(T)}` does not have all functions defined");
+            }
+
+            return new Program(world, start, update, finish, (ushort)TypeInfo<T>.size);
         }
     }
 }

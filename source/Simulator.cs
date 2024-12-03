@@ -82,7 +82,7 @@ namespace Simulation
             foreach (var x in query)
             {
                 uint programEntity = x.entity;
-                if (!hostWorld.ContainsComponent<ReturnCode>(programEntity))
+                if (!hostWorld.ContainsComponent<StatusCode>(programEntity))
                 {
                     ref ProgramAllocation allocation = ref hostWorld.GetComponentRef<ProgramAllocation>(programEntity);
                     ref IsProgram.State state = ref x.Component1.state;
@@ -173,23 +173,23 @@ namespace Simulation
                 {
                     World programWorld = programContainer.world;
                     Allocation allocation = programContainer.allocation;
-                    uint returnCode = programContainer.update.Invoke(this, allocation, programWorld, delta);
-                    if (returnCode != default)
+                    StatusCode statusCode = programContainer.update.Invoke(this, allocation, programWorld, delta);
+                    if (statusCode != default)
                     {
                         //program has finished because return code was non 0
                         ref IsProgram component = ref programContainer.program.GetComponentRef<IsProgram>();
                         component.state = IsProgram.State.Finished;
-                        if (programContainer.program.ContainsComponent<ReturnCode>())
+                        if (programContainer.program.ContainsComponent<StatusCode>())
                         {
-                            programContainer.program.SetComponent(new ReturnCode(returnCode));
+                            programContainer.program.SetComponent(statusCode);
                         }
                         else
                         {
-                            programContainer.program.AddComponent(new ReturnCode(returnCode));
+                            programContainer.program.AddComponent(statusCode);
                         }
 
                         programContainer.finished = true;
-                        programContainer.finish.Invoke(this, allocation, programWorld, returnCode);
+                        programContainer.finish.Invoke(this, allocation, programWorld, statusCode);
                     }
                     else
                     {
@@ -262,7 +262,7 @@ namespace Simulation
             foreach (var x in query)
             {
                 uint programEntity = x.entity;
-                if (!hostWorld.ContainsComponent<ReturnCode>(programEntity))
+                if (!hostWorld.ContainsComponent<StatusCode>(programEntity))
                 {
                     ProgramAllocation programAllocation = hostWorld.GetComponent<ProgramAllocation>(programEntity);
                     for (uint i = 0; i < systems.Length; i++)

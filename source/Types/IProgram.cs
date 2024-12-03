@@ -1,25 +1,22 @@
 ﻿using Simulation.Functions;
+using System;
+using Unmanaged;
+using Worlds;
 
 namespace Simulation
 {
-    /// <summary>
-    /// Describes a program.
-    /// </summary>
     public interface IProgram
     {
-        /// <summary>
-        /// Called when this program has started.
-        /// </summary>
-        StartProgram Start { get; }
+        public (StartProgram start, UpdateProgram update, FinishProgram finish) Functions
+        {
+            get
+            {
+                return default;
+            }
+        }
 
-        /// <summary>
-        /// Called when the simulator iterates over this program.
-        /// </summary>
-        UpdateProgram Update { get; }
-
-        /// <summary>
-        /// Called when this program is finished, and just before it's disposed.
-        /// </summary>
-        FinishProgram Finish { get; }
+        void Start(in Simulator simulator, in Allocation allocation, in World world);
+        StatusCode Update(in TimeSpan delta);
+        void Finish(in StatusCode statusCode);
     }
 }
