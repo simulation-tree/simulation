@@ -1,22 +1,20 @@
 ﻿using System;
 using Unmanaged;
-using Worlds;
 
 namespace Simulation
 {
-    [Component]
     public readonly struct StatusCode : IEquatable<StatusCode>
     {
         public static readonly StatusCode Continue = new(0);
 
-        private readonly byte value;
+        private readonly ushort value;
 
         public readonly bool IsContinue => value == 0;
-        public readonly bool IsSuccess => (value & 1) == 0;
-        public readonly bool IsFailure => (value & 1) == 1;
-        public readonly byte Code => (byte)(value >> 1);
+        public readonly bool IsSuccess => (value & 1) == 1;
+        public readonly bool IsFailure => (value & 2) == 1;
+        public readonly byte Code => (byte)(value >> 2);
 
-        private StatusCode(byte value)
+        private StatusCode(ushort value)
         {
             this.value = value;
         }
@@ -81,13 +79,13 @@ namespace Simulation
 
         public static StatusCode Success(byte code)
         {
-            byte value = (byte)(code << 1);
+            ushort value = (ushort)(code << 2 | 1);
             return new StatusCode(value);
         }
 
         public static StatusCode Failure(byte code)
         {
-            byte value = (byte)(code << 1 | 1);
+            ushort value = (ushort)(code << 2 | 2);
             return new StatusCode(value);
         }
 
@@ -118,17 +116,17 @@ namespace Simulation
 
         public static implicit operator uint(StatusCode code)
         {
-            return code.value;
+            return code.Code;
         }
 
         public static implicit operator int(StatusCode code)
         {
-            return code.value;
+            return code.Code;
         }
 
         public static implicit operator byte(StatusCode code)
         {
-            return code.value;
+            return code.Code;
         }
     }
 }

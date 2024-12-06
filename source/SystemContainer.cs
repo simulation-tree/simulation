@@ -10,7 +10,7 @@ namespace Simulation
     /// <summary>
     /// Contains a system added to a <see cref="Simulation.Simulator"/>.
     /// </summary>
-    public unsafe struct SystemContainer : IDisposable
+    public readonly unsafe struct SystemContainer : IDisposable
     {
         /// <summary>
         /// The <see cref="RuntimeTypeHandle"/> of this system.
@@ -122,10 +122,12 @@ namespace Simulation
         /// <summary>
         /// Initializes this system with the given world as its context.
         /// </summary>
-        public readonly void Initialize(World programWorld)
+        public readonly void Start(World programWorld)
         {
-            start.Invoke(this, programWorld);
+            ThrowIfAlreadyInitializedWith(programWorld);
+
             programWorlds.Add(programWorld);
+            start.Invoke(this, programWorld);
         }
 
         /// <summary>
@@ -134,6 +136,7 @@ namespace Simulation
         public readonly void Update(World programWorld, TimeSpan delta)
         {
             ThrowIfNotInitializedWith(programWorld);
+
             update.Invoke(this, programWorld, delta);
         }
 
@@ -143,7 +146,9 @@ namespace Simulation
         public readonly void Finalize(World programWorld)
         {
             ThrowIfNotInitializedWith(programWorld);
+
             finish.Invoke(this, programWorld);
+            programWorlds.TryRemoveBySwapping(programWorld);
         }
 
         /// <summary>
@@ -181,6 +186,15 @@ namespace Simulation
                 throw new InvalidOperationException($"System `{this}` is not initialized with world `{programWorld}`");
             }
         }
+
+        [Conditional("DEBUG")]
+        public readonly void ThrowIfAlreadyInitializedWith(World programWorld)
+        {
+            if (IsInitializedWith(programWorld))
+            {
+                throw new InvalidOperationException($"System `{this}` is already initialized with world `{programWorld}`");
+            }
+        }
     }
 
     /// <summary>
@@ -216,6 +230,11 @@ namespace Simulation
         {
             this.simulator = simulator;
             this.index = index;
+        }
+
+        public readonly void RemoveSelf()
+        {
+            Simulator.RemoveSystem<T>();
         }
 
         /// <inheritdoc/>

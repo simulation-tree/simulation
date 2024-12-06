@@ -18,7 +18,8 @@ namespace Simulation
         /// <summary>
         /// Gets the state of the program.
         /// </summary>
-        public readonly IsProgram.State State => entity.GetComponent<IsProgram>().state;
+        public readonly ref IsProgram.State State => ref entity.GetComponent<IsProgram>().state;
+        public readonly World ProgramWorld => entity.GetComponent<IsProgram>().world;
 
         readonly uint IEntity.Value => entity.GetEntityValue();
         readonly World IEntity.World => entity.GetWorld();
@@ -27,10 +28,10 @@ namespace Simulation
         /// <summary>
         /// Creates a new program in the given <see cref="World"/>.
         /// </summary>
-        public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize)
+        public Program(World hostWorld, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation)
         {
-            entity = new(world);
-            entity.AddComponent(new IsProgram(start, update, finish, typeSize));
+            entity = new(hostWorld);
+            entity.AddComponent(new IsProgram(start, update, finish, typeSize, allocation, new()));
         }
 
         /// <summary>
@@ -49,7 +50,7 @@ namespace Simulation
         {
             if (State == IsProgram.State.Finished)
             {
-                statusCode = entity.GetComponent<StatusCode>();
+                statusCode = entity.GetComponent<IsProgram>().statusCode;
                 return true;
             }
             else
@@ -65,8 +66,8 @@ namespace Simulation
         public readonly ref T Read<T>() where T : unmanaged
         {
             ThrowIfNotInitialized();
-            ref ProgramAllocation allocation = ref entity.GetComponentRef<ProgramAllocation>();
-            return ref allocation.allocation.Read<T>();
+            ref IsProgram program = ref entity.GetComponent<IsProgram>();
+            return ref program.allocation.Read<T>();
         }
 
         /// <summary>
@@ -75,7 +76,7 @@ namespace Simulation
         /// </summary>
         public readonly void Restart()
         {
-            ref IsProgram program = ref entity.GetComponentRef<IsProgram>();
+            ref IsProgram program = ref entity.GetComponent<IsProgram>();
             program.state = IsProgram.State.Uninitialized;
         }
 
@@ -96,16 +97,53 @@ namespace Simulation
         /// <summary>
         /// Creates a new program in the given <see cref="World"/>.
         /// </summary>
-        public static Program Create<T>(World world) where T : unmanaged, IProgram
+        public static Program<T> Create<T>(World world, T program) where T : unmanaged, IProgram
         {
-            T template = default;
-            (StartProgram start, UpdateProgram update, FinishProgram finish) = template.Functions;
+            (StartProgram start, UpdateProgram update, FinishProgram finish) = program.Functions;
             if (start == default || update == default || finish == default)
             {
                 throw new InvalidOperationException($"Program `{typeof(T)}` does not have all functions defined");
             }
 
-            return new Program(world, start, update, finish, (ushort)TypeInfo<T>.size);
+            Allocation allocation = Allocation.Create(program);
+            return new(world, start, update, finish, (ushort)TypeInfo<T>.size, allocation);
+        }
+
+        public static implicit operator Entity(Program program)
+        {
+            return program.entity;
+        }
+    }
+
+    public readonly struct Program<T> : IEntity where T : unmanaged, IProgram
+    {
+        private readonly Program program;
+
+        public readonly ref IsProgram.State State => ref program.State;
+        public readonly ref T Value => ref program.Read<T>();
+
+        readonly uint IEntity.Value => program.GetEntityValue();
+        readonly World IEntity.World => program.GetWorld();
+        readonly Definition IEntity.Definition => new Definition().AddComponentType<IsProgram>();
+
+        public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation)
+        {
+            program = new(world, start, update, finish, typeSize, allocation);
+        }
+
+        public readonly void Dispose()
+        {
+            program.Dispose();
+        }
+
+        public static implicit operator Program(Program<T> program)
+        {
+            return program.program;
+        }
+
+        public static implicit operator Entity(Program<T> program)
+        {
+            return program.program;
         }
     }
 }

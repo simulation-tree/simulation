@@ -10,6 +10,7 @@ namespace Simulation.Tests
         public byte limit;
         public byte additive;
         public FixedString text;
+        public StatusCode statusCode;
 
         private readonly World world;
 
@@ -18,7 +19,7 @@ namespace Simulation.Tests
             this.world = world;
         }
 
-        readonly void IProgram.Start(in Simulator simulator, in Allocation allocation, in World world)
+        readonly void IProgram.Initialize(in Simulator simulator, in Allocation allocation, in World world)
         {
             Calculator calculator = new(world);
             calculator.limit = 4;
@@ -37,15 +38,17 @@ namespace Simulation.Tests
             world.AddComponent(newEntity, true);
             if (world.Count >= limit)
             {
-                return StatusCode.Success(100);
+                statusCode = StatusCode.Success(100);
+                return statusCode;
             }
             else
             {
-                return StatusCode.Continue;
+                statusCode = StatusCode.Continue;
+                return statusCode;
             }
         }
 
-        void IProgram.Finish(in StatusCode statusCode)
+        public void Dispose()
         {
             USpan<char> buffer = stackalloc char[64];
             uint length = statusCode.ToString(buffer);

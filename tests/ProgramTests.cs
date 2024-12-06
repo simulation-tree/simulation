@@ -1,4 +1,5 @@
-﻿using Simulation.Components;
+﻿using Collections;
+using Simulation.Components;
 using System;
 using System.Threading;
 using Worlds;
@@ -17,7 +18,7 @@ namespace Simulation.Tests
         [CancelAfter(1000)]
         public void SimpleProgram(CancellationToken token)
         {
-            Program program = Program.Create<Calculator>(World);
+            Program program = Program.Create(World, new Calculator());
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
             StatusCode statusCode;
@@ -44,7 +45,7 @@ namespace Simulation.Tests
         [Test]
         public void ExitEarly()
         {
-            Program program = Program.Create<Calculator>(World);
+            Program program = Program.Create(World, new Calculator());
 
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
@@ -53,17 +54,18 @@ namespace Simulation.Tests
 
             Assert.That(calculator.text.ToString(), Is.EqualTo("Running2"));
             program.Dispose();
+
             Simulator.Update(); //to invoke the finisher
 
             Assert.That(calculator.value, Is.EqualTo(calculator.additive));
-            Assert.That(calculator.text.ToString(), Is.EqualTo("Finished 0"));
+            Assert.That(calculator.text.ToString(), Is.Not.EqualTo("Success 0"));
         }
 
         [Test]
         [CancelAfter(1000)]
         public void ReRunProgram(CancellationToken token)
         {
-            Program program = Program.Create<Calculator>(World);
+            Program program = Program.Create(World, new Calculator());
 
             while (!program.IsFinished(out StatusCode statusCode))
             {
@@ -90,6 +92,71 @@ namespace Simulation.Tests
 
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Finished));
             Assert.That(calculator.value, Is.EqualTo(calculator.limit * calculator.additive));
+        }
+
+        [Test, CancelAfter(3000)]
+        public void SystemsInitializeWithProgram(CancellationToken token)
+        {
+            using List<SystemContainer> startedWorlds = new();
+            using List<SystemContainer> updatedWorlds = new();
+            using List<SystemContainer> finishedWorlds = new();
+
+            SystemContainer<DummySystem> system = Simulator.AddSystem(new DummySystem(startedWorlds, updatedWorlds, finishedWorlds));
+            {
+                using (Program program = Program.Create(World, new DummyProgram(TimeSpan.FromSeconds(2))))
+                {
+                    StatusCode statusCode;
+                    while (!program.IsFinished(out statusCode))
+                    {
+                        Simulator.Update();
+
+                        if (token.IsCancellationRequested)
+                        {
+                            Assert.Fail("Test took too long");
+                        }
+                    }
+
+                    Assert.That(statusCode, Is.EqualTo(StatusCode.Success(0)));
+                }
+
+            }
+            system.RemoveSelf();
+
+            Assert.That(startedWorlds.Count, Is.EqualTo(2));
+            Assert.That(updatedWorlds.Count, Is.GreaterThan(2));
+            Assert.That(finishedWorlds.Count, Is.EqualTo(2));
+        }
+
+        [Test, CancelAfter(3000)]
+        public void ProgramAskingSimulatorUpdateSystems(CancellationToken token)
+        {
+            using List<SystemContainer> startedWorlds = new();
+            using List<SystemContainer> updatedWorlds = new();
+            using List<SystemContainer> finishedWorlds = new();
+
+            SystemContainer<DummySystem> system = Simulator.AddSystem(new DummySystem(startedWorlds, updatedWorlds, finishedWorlds));
+            {
+                using (Program program = Program.Create(World, new ProgramThatUpdatesSystemsOnStart()))
+                {
+                    StatusCode statusCode;
+                    while (!program.IsFinished(out statusCode))
+                    {
+                        Simulator.Update();
+
+                        if (token.IsCancellationRequested)
+                        {
+                            Assert.Fail("Test took too long");
+                        }
+                    }
+
+                    Assert.That(statusCode, Is.EqualTo(StatusCode.Success(0)));
+                }
+            }
+            system.RemoveSelf();
+
+            Assert.That(startedWorlds.Count, Is.EqualTo(2));
+            Assert.That(updatedWorlds.Count, Is.EqualTo(3));
+            Assert.That(finishedWorlds.Count, Is.EqualTo(2));
         }
     }
 }

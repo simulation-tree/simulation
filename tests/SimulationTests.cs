@@ -19,7 +19,6 @@ namespace Simulation.Tests
         {
             base.SetUp();
             ComponentType.Register<IsProgram>();
-            ComponentType.Register<ProgramAllocation>();
             ComponentType.Register<StatusCode>();
             world = new();
             simulator = new(world);

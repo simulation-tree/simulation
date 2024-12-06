@@ -23,5 +23,17 @@
             Assert.That(a.Code, Is.EqualTo(0));
             Assert.That(b.Code, Is.EqualTo(1));
         }
+
+        [Test]
+        public void MaxCodes()
+        {
+            StatusCode a = StatusCode.Success(byte.MaxValue);
+            Assert.That(a.Code, Is.EqualTo(byte.MaxValue));
+            Assert.That(a.IsSuccess, Is.True);
+
+            StatusCode b = StatusCode.Failure(byte.MaxValue);
+            Assert.That(b.Code, Is.EqualTo(byte.MaxValue));
+            Assert.That(b.IsSuccess, Is.False);
+        }
     }
 }

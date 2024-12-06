@@ -38,5 +38,9 @@ namespace Simulation.Tests
                 entity.SetComponent(true);
             }
         }
+
+        public readonly void Dispose()
+        {
+        }
     }
 }

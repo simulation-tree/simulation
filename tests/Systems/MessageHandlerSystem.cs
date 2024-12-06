@@ -34,5 +34,9 @@ namespace Simulation.Tests
         void ISystem.Finish(in SystemContainer systemContainer, in World world)
         {
         }
+
+        public readonly void Dispose()
+        {
+        }
     }
 }

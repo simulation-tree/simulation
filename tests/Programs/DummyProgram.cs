@@ -1,0 +1,45 @@
+﻿using Collections;
+using System;
+using Unmanaged;
+using Worlds;
+
+namespace Simulation.Tests
+{
+    public partial struct DummyProgram : IProgram
+    {
+        private readonly List<SystemContainer> systems;
+        private TimeSpan time;
+
+        [Obsolete("Default constructor not supported", true)]
+        public DummyProgram()
+        {
+            throw new NotSupportedException();
+        }
+
+        public DummyProgram(TimeSpan duration)
+        {
+            systems = new();
+            time = duration;
+        }
+
+        void IDisposable.Dispose()
+        {
+            systems.Dispose();
+        }
+
+        void IProgram.Initialize(in Simulator simulator, in Allocation allocation, in World world)
+        {
+        }
+
+        StatusCode IProgram.Update(in TimeSpan delta)
+        {
+            time -= delta;
+            if (time.TotalSeconds <= 0)
+            {
+                return StatusCode.Success(0);
+            }
+
+            return StatusCode.Continue;
+        }
+    }
+}

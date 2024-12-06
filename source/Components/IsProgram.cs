@@ -1,4 +1,5 @@
 using Simulation.Functions;
+using Unmanaged;
 using Worlds;
 
 namespace Simulation.Components
@@ -29,20 +30,35 @@ namespace Simulation.Components
         /// </summary>
         public readonly ushort typeSize;
 
+        public StatusCode statusCode;
+
         /// <summary>
         /// State of the program.
         /// </summary>
         public State state;
 
         /// <summary>
+        /// The allocation of the program.
+        /// </summary>
+        public readonly Allocation allocation;
+
+        /// <summary>
+        /// The world that was created for and belongs to the program.
+        /// </summary>
+        public readonly World world;
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="IsProgram"/> struct.
         /// </summary>
-        public IsProgram(StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize)
+        public IsProgram(StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation, World world)
         {
             this.start = start;
             this.update = update;
             this.finish = finish;
             this.typeSize = typeSize;
+            this.state = State.Uninitialized;
+            this.allocation = allocation;
+            this.world = world;
         }
 
         /// <summary>

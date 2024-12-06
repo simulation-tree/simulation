@@ -133,7 +133,7 @@ namespace Simulation.Generator
                                 source.BeginGroup();
                                 {
                                     source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
-                                    source.AppendLine("program.Start(in simulator, in allocation, in world);");
+                                    source.AppendLine("program.Initialize(in simulator, in allocation, in world);");
                                 }
                                 source.EndGroup();
                             }
@@ -177,7 +177,7 @@ namespace Simulation.Generator
                                 source.BeginGroup();
                                 {
                                     source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
-                                    source.AppendLine("program.Finish(in statusCode);");
+                                    source.AppendLine("Dispose(ref program);");
                                 }
                                 source.EndGroup();
                             }
@@ -188,9 +188,22 @@ namespace Simulation.Generator
                                 {
                                     source.AppendLine($"ref {input.typeName} system = ref systemContainer.Read<{input.typeName}>();");
                                     source.AppendLine("system.Finish(in systemContainer, in world);");
+                                    source.AppendLine("if (systemContainer.World == world)");
+                                    source.BeginGroup();
+                                    {
+                                        source.AppendLine("Dispose(ref system);");
+                                    }
+                                    source.EndGroup();
                                 }
                                 source.EndGroup();
                             }
+                            source.AppendLine();
+                            source.AppendLine("static void Dispose<T>(ref T disposable) where T : unmanaged, IDisposable");
+                            source.BeginGroup();
+                            {
+                                source.AppendLine("disposable.Dispose();");
+                            }
+                            source.EndGroup();
                         }
                         source.EndGroup();
                     }

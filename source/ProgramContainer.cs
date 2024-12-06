@@ -1,5 +1,6 @@
 ﻿using Simulation.Components;
 using Simulation.Functions;
+using System;
 using Unmanaged;
 using Worlds;
 
@@ -9,7 +10,7 @@ namespace Simulation
     /// Container for a program running in a <see cref="World"/>,
     /// operated by a <see cref="Simulator"/>.
     /// </summary>
-    public struct ProgramContainer
+    public struct ProgramContainer : IDisposable
     {
         /// <summary>
         /// The function to start the program.
@@ -34,29 +35,32 @@ namespace Simulation
         /// <summary>
         /// The entity in the <see cref="Simulator"/> world that initialized this program.
         /// </summary>
-        public readonly Entity program;
+        public readonly uint entity;
 
         /// <summary>
         /// Native memory containing the program's data.
         /// </summary>
         public readonly Allocation allocation;
 
-        /// <summary>
-        /// Whether the program has finished running.
-        /// </summary>
-        public bool finished;
+        public bool didFinish;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProgramContainer"/> struct.
         /// </summary>
-        public ProgramContainer(IsProgram component, World world, Entity program, Allocation allocation)
+        public ProgramContainer(uint entity, IsProgram component, World world, Allocation allocation)
         {
+            this.entity = entity;
             start = component.start;
             finish = component.finish;
             update = component.update;
             this.world = world;
-            this.program = program;
             this.allocation = allocation;
+        }
+
+        public readonly void Dispose()
+        {
+            world.Dispose();
+            allocation.Dispose();
         }
     }
 }

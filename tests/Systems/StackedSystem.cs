@@ -9,7 +9,7 @@ namespace Simulation.Tests
         {
             if (systemContainer.World == world)
             {
-                systemContainer.Simulator.AddSystem<SimpleSystem>();
+                systemContainer.Simulator.AddSystem(new SimpleSystem());
             }
         }
 
@@ -23,6 +23,10 @@ namespace Simulation.Tests
             {
                 systemContainer.Simulator.RemoveSystem<SimpleSystem>();
             }
+        }
+
+        void IDisposable.Dispose()
+        {
         }
     }
 }

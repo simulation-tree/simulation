@@ -1,5 +1,4 @@
 ﻿using Collections;
-using Simulation.Components;
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
@@ -13,11 +12,18 @@ namespace Simulation
     /// </summary>
     public unsafe struct UnsafeSimulator
     {
-        private World world;
         private DateTime lastUpdateTime;
-        private List<SystemContainer> systems;
-        private List<ProgramContainer> knownPrograms;
-        private ComponentQuery<IsProgram> programQuery;
+        private readonly World world;
+        private readonly List<SystemContainer> systems;
+        private readonly Dictionary<uint, ProgramContainer> programs;
+
+        private UnsafeSimulator(World world)
+        {
+            this.world = world;
+            lastUpdateTime = DateTime.MinValue;
+            systems = new();
+            programs = new();
+        }
 
         /// <summary>
         /// Allocates a new <see cref="UnsafeSimulator"/> instance.
@@ -25,11 +31,7 @@ namespace Simulation
         public static UnsafeSimulator* Allocate(World world)
         {
             UnsafeSimulator* simulator = Allocations.Allocate<UnsafeSimulator>();
-            simulator->world = world;
-            simulator->lastUpdateTime = DateTime.MinValue;
-            simulator->systems = new();
-            simulator->knownPrograms = new();
-            simulator->programQuery = new();
+            *simulator = new(world);
             return simulator;
         }
 
@@ -40,8 +42,7 @@ namespace Simulation
         {
             Allocations.ThrowIfNull(simulator);
 
-            simulator->programQuery.Dispose();
-            simulator->knownPrograms.Dispose();
+            simulator->programs.Dispose();
             simulator->systems.Dispose();
             Allocations.Free(ref simulator);
         }
@@ -69,31 +70,21 @@ namespace Simulation
         /// <summary>
         /// Retrieves the systems added to a <see cref="UnsafeSimulator"/>.
         /// </summary>
-        public static USpan<SystemContainer> GetSystems(UnsafeSimulator* simulator)
+        public static List<SystemContainer> GetSystems(UnsafeSimulator* simulator)
         {
             Allocations.ThrowIfNull(simulator);
 
-            return simulator->systems.AsSpan();
+            return simulator->systems;
         }
 
         /// <summary>
         /// Retrieves the known programs in a <see cref="UnsafeSimulator"/>.
         /// </summary>
-        public static ref List<ProgramContainer> GetKnownPrograms(UnsafeSimulator* simulator)
+        public static Dictionary<uint, ProgramContainer> GetPrograms(UnsafeSimulator* simulator)
         {
             Allocations.ThrowIfNull(simulator);
 
-            return ref simulator->knownPrograms;
-        }
-
-        /// <summary>
-        /// Retrieves the query for programs in a <see cref="UnsafeSimulator"/>.
-        /// </summary>
-        public static ref ComponentQuery<IsProgram> GetProgramQuery(UnsafeSimulator* simulator)
-        {
-            Allocations.ThrowIfNull(simulator);
-
-            return ref simulator->programQuery;
+            return simulator->programs;
         }
 
         /// <summary>
@@ -110,26 +101,25 @@ namespace Simulation
         /// Adds a system of type <typeparamref name="T"/> to a <see cref="UnsafeSimulator"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
-        public static SystemContainer<T> AddSystem<T>(UnsafeSimulator* simulator) where T : unmanaged, ISystem
+        public static SystemContainer<T> AddSystem<T>(UnsafeSimulator* simulator, T system) where T : unmanaged, ISystem
         {
             Allocations.ThrowIfNull(simulator);
 
-            T template = new();
-            (StartSystem start, UpdateSystem update, FinishSystem finish) = template.Functions;
+            (StartSystem start, UpdateSystem update, FinishSystem finish) = system.Functions;
             if (start == default || update == default || finish == default)
             {
                 throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
             }
 
             World hostWorld = GetWorld(simulator);
-            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            RuntimeTypeHandle systemType = typeof(T).TypeHandle;
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            Allocation instance = Allocation.Create(template);
+            Allocation instance = Allocation.Create(system);
 
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[32];
-            uint messageHandlerCount = template.GetMessageHandlers(buffer);
+            uint messageHandlerCount = system.GetMessageHandlers(buffer);
             Dictionary<nint, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
@@ -142,7 +132,7 @@ namespace Simulation
                         throw new InvalidOperationException($"Message handler at index {i} is uninitialized in system `{typeof(T)}`");
                     }
 
-                    handlers.TryAdd(handler.messageType, handler.function);
+                    handlers.Add(handler.messageType, handler.function);
                 }
             }
             else
@@ -150,10 +140,10 @@ namespace Simulation
                 handlers = new(1);
             }
 
-            SystemContainer container = new(simulator, instance, systemType, handlers, start, update, finish);
+            SystemContainer container = new(simulator, instance, RuntimeTypeHandle.ToIntPtr(systemType), handlers, start, update, finish);
             simulator->systems.Add(container);
             SystemContainer<T> genericContainer = new(simulator, simulator->systems.Count - 1);
-            container.Initialize(hostWorld);
+            container.Start(hostWorld);
             return genericContainer;
         }
 

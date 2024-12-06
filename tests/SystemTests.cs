@@ -20,9 +20,9 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(hostWorld))
                 {
-                    simulator.AddSystem<SimpleSystem>();
+                    simulator.AddSystem(new SimpleSystem());
 
-                    Assert.That(simulator.SystemCount, Is.EqualTo(1));
+                    Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
                     simulator.Update();
 
@@ -49,9 +49,9 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(world))
                 {
-                    simulator.AddSystem<MessageHandlerSystem>();
+                    simulator.AddSystem(new MessageHandlerSystem());
 
-                    Assert.That(simulator.SystemCount, Is.EqualTo(1));
+                    Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
                     bool handled = simulator.TryHandleMessage(new FixedString("test message"));
                     Assert.That(handled, Is.True);
@@ -76,13 +76,13 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(world))
                 {
-                    simulator.AddSystem<StackedSystem>();
+                    simulator.AddSystem(new StackedSystem());
 
-                    Assert.That(simulator.SystemCount, Is.EqualTo(2));
+                    Assert.That(simulator.Systems.Length, Is.EqualTo(2));
 
                     simulator.Update();
 
-                    Assert.That(simulator.SystemCount, Is.EqualTo(2));
+                    Assert.That(simulator.Systems.Length, Is.EqualTo(2));
                     Assert.That(world.Count, Is.EqualTo(2));
 
                     Entity firstEntity = new(world, 1);
@@ -93,7 +93,7 @@ namespace Simulation.Tests
 
                     simulator.RemoveSystem<StackedSystem>();
 
-                    Assert.That(simulator.SystemCount, Is.EqualTo(0));
+                    Assert.That(simulator.Systems.Length, Is.EqualTo(0));
                 }
 
                 Entity secondEntity = new(world, 2);

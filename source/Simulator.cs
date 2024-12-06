@@ -10,12 +10,12 @@ namespace Simulation
     /// <summary>
     /// A simulator that manages systems and programs.
     /// </summary>
-    public unsafe struct Simulator : IDisposable
+    public unsafe struct Simulator : IDisposable, IEquatable<Simulator>
     {
         private UnsafeSimulator* value;
 
         /// <summary>
-        /// The world that this simulator was created in.
+        /// The world that this simulator was created for.
         /// </summary>
         public readonly World World => UnsafeSimulator.GetWorld(value);
 
@@ -30,14 +30,29 @@ namespace Simulation
         public readonly nint Address => (nint)value;
 
         /// <summary>
-        /// Count of systems added in this simulator.
+        /// All known programs that have ever been initialized.
         /// </summary>
-        public readonly uint SystemCount => UnsafeSimulator.GetSystems(value).Length;
+        public readonly Dictionary<uint, ProgramContainer> Programs => UnsafeSimulator.GetPrograms(value);
 
         /// <summary>
-        /// All known programs.
+        /// All added systems.
         /// </summary>
-        public readonly USpan<ProgramContainer> Programs => UnsafeSimulator.GetKnownPrograms(value).AsSpan();
+        public readonly USpan<SystemContainer> Systems => UnsafeSimulator.GetSystems(value).AsSpan();
+
+        /// <summary>
+        /// All <see cref="Worlds.World"/> instances that belong exclusively to programs.
+        /// </summary>
+        public readonly System.Collections.Generic.IEnumerable<World> ProgramWorlds
+        {
+            get
+            {
+                Dictionary<uint, ProgramContainer> programs = Programs;
+                foreach (uint key in programs.Keys)
+                {
+                    yield return programs[key].world;
+                }
+            }
+        }
 
 #if NET
         /// <summary>
@@ -71,69 +86,123 @@ namespace Simulation
         /// </summary>
         public void Dispose()
         {
-            InitializeSystems();
-            FinishDestroyedPrograms();
-
-            World hostWorld = World;
-
-            //finalize program worlds
-            ref ComponentQuery<IsProgram> query = ref UnsafeSimulator.GetProgramQuery(value);
-            query.Update(World, true);
-            foreach (var x in query)
-            {
-                uint programEntity = x.entity;
-                if (!hostWorld.ContainsComponent<StatusCode>(programEntity))
-                {
-                    ref ProgramAllocation allocation = ref hostWorld.GetComponentRef<ProgramAllocation>(programEntity);
-                    ref IsProgram.State state = ref x.Component1.state;
-                    state = IsProgram.State.Finished;
-                    x.Component1.finish.Invoke(this, allocation.allocation, allocation.world, default);
-                }
-            }
+            StatusCode statusCode = StatusCode.Success(byte.MaxValue);
+            InitializeSystemsNotStarted();
+            FinishDestroyedPrograms(statusCode);
+            InitializeEachProgram();
+            FinishAllPrograms(statusCode);
 
             //dispose systems
-            USpan<SystemContainer> systems = UnsafeSimulator.GetSystems(value);
-            for (uint i = 0; i < systems.Length; i++)
+            USpan<SystemContainer> systems = Systems;
+            for (uint i = systems.Length - 1; i != uint.MaxValue; i--)
             {
                 ref SystemContainer system = ref systems[i];
                 system.Dispose();
             }
 
-            //clean up previously known programs
-            ref List<ProgramContainer> knownPrograms = ref UnsafeSimulator.GetKnownPrograms(value);
-            for (uint i = knownPrograms.Count - 1; i != uint.MaxValue; i--)
+            //dispose programs
+            Dictionary<uint, ProgramContainer> programs = Programs;
+            USpan<uint> programKeys = stackalloc uint[(int)programs.Count];
+            uint programCount = 0;
+            foreach (uint key in programs.Keys)
             {
-                ref ProgramContainer program = ref knownPrograms[i];
-                program.world.Dispose();
-                program.allocation.Dispose();
+                programKeys[programCount++] = key;
             }
 
-            knownPrograms.Clear();
+            for (uint i = programCount - 1; i != uint.MaxValue; i--)
+            {
+                ref ProgramContainer container = ref programs[programKeys[i]];
+                container.Dispose();
+            }
+
             UnsafeSimulator.Free(ref value);
         }
 
-        private readonly void FinishDestroyedPrograms()
+        private readonly void FinishAllPrograms(StatusCode statusCode)
         {
-            ref List<ProgramContainer> knownPrograms = ref UnsafeSimulator.GetKnownPrograms(value);
-            for (uint i = knownPrograms.Count - 1; i != uint.MaxValue; i--)
+            World hostWorld = World;
+            ComponentQuery<IsProgram> query = new(hostWorld);
+            foreach (var r in query)
             {
-                ref ProgramContainer program = ref knownPrograms[i];
-                if (!program.finished && program.program.IsDestroyed())
+                ref IsProgram program = ref r.component1;
+                if (program.state != IsProgram.State.Finished)
                 {
-                    program.finished = true;
-                    program.finish.Invoke(this, program.allocation, program.world, default);
+                    program.state = IsProgram.State.Finished;
+                    program.finish.Invoke(this, program.allocation, program.world, statusCode);
+                }
+            }
+        }
+
+        private readonly void FinishDestroyedPrograms(StatusCode statusCode)
+        {
+            World hostWorld = World;
+            Dictionary<uint, ProgramContainer> programs = Programs;
+            USpan<uint> programKeys = stackalloc uint[(int)programs.Count];
+            uint programCount = 0;
+            foreach (uint key in programs.Keys)
+            {
+                programKeys[programCount++] = key;
+            }
+
+            for (uint i = programCount - 1; i != uint.MaxValue; i--)
+            {
+                ref ProgramContainer container = ref programs[programKeys[i]];
+                if (!container.didFinish && !hostWorld.ContainsEntity(container.entity))
+                {
+                    container.didFinish = true;
+                    container.finish.Invoke(this, container.allocation, container.world, statusCode);
                 }
             }
         }
 
         /// <summary>
-        /// Updates all systems then all programs forward by
-        /// <paramref name="delta"/> amount of time.
+        /// Submits a message for a potential system to handle.
         /// </summary>
-        public readonly void Update(TimeSpan delta)
+        /// <returns><c>true</c> if it was handled.</returns>
+        public readonly bool TryHandleMessage<T>(T message) where T : unmanaged
         {
-            UpdateSystems(delta);
-            UpdatePrograms(delta);
+            InitializeSystemsNotStarted();
+            InitializeEachProgram();
+
+            using Allocation messageContainer = Allocation.Create(message);
+            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            USpan<SystemContainer> systems = Systems;
+            bool handled = false;
+
+            //tell host world
+            World hostWorld = World;
+            for (uint i = 0; i < systems.Length; i++)
+            {
+                ref SystemContainer system = ref systems[i];
+                handled |= system.TryHandleMessage(hostWorld, messageType, messageContainer);
+            }
+
+            //tell program worlds
+            handled |= TryHandleMessagesWithPrograms(messageType, messageContainer);
+            return handled;
+        }
+
+        private readonly bool TryHandleMessagesWithPrograms(nint messageType, Allocation messageContainer)
+        {
+            World hostWorld = World;
+            ComponentQuery<IsProgram> query = new(hostWorld);
+            USpan<SystemContainer> systems = Systems;
+            bool handled = false;
+            foreach (var r in query)
+            {
+                ref IsProgram program = ref r.component1;
+                if (program.state == IsProgram.State.Active)
+                {
+                    World programWorld = program.world;
+                    for (uint i = 0; i < systems.Length; i++)
+                    {
+                        ref SystemContainer system = ref systems[i];
+                        handled |= system.TryHandleMessage(programWorld, messageType, messageContainer);
+                    }
+                }
+            }
+
+            return handled;
         }
 
         /// <summary>
@@ -156,44 +225,69 @@ namespace Simulation
         }
 
         /// <summary>
+        /// Updates all systems then all programs forward by
+        /// <paramref name="delta"/> amount of time.
+        /// </summary>
+        public readonly void Update(TimeSpan delta)
+        {
+            UpdateSystems(delta);
+            UpdatePrograms(delta);
+        }
+
+        /// <summary>
         /// Updates all programs forward.
         /// </summary>
         public readonly void UpdatePrograms(TimeSpan delta)
         {
-            FinishDestroyedPrograms();
-            InitializePrograms();
+            FinishDestroyedPrograms(StatusCode.Success(byte.MaxValue));
+            InitializeEachProgram();
+            UpdateEachProgram(delta);
+        }
 
-            //update program worlds
-            ref List<ProgramContainer> knownPrograms = ref UnsafeSimulator.GetKnownPrograms(value);
-            uint updatedPrograms = 0;
-            for (uint p = 0; p < knownPrograms.Count; p++)
+        private readonly void InitializeEachProgram()
+        {
+            World hostWorld = World;
+            ComponentQuery<IsProgram> query = new(hostWorld);
+            Dictionary<uint, ProgramContainer> programs = Programs;
+            foreach (var r in query)
             {
-                ref ProgramContainer programContainer = ref knownPrograms[p];
-                if (!programContainer.finished)
+                ref IsProgram program = ref r.component1;
+                if (program.state == IsProgram.State.Uninitialized)
                 {
-                    World programWorld = programContainer.world;
-                    Allocation allocation = programContainer.allocation;
-                    StatusCode statusCode = programContainer.update.Invoke(this, allocation, programWorld, delta);
-                    if (statusCode != default)
+                    program.state = IsProgram.State.Active;
+                    if (programs.TryGetValue(r.entity, out ProgramContainer container))
                     {
-                        //program has finished because return code was non 0
-                        ref IsProgram component = ref programContainer.program.GetComponentRef<IsProgram>();
-                        component.state = IsProgram.State.Finished;
-                        if (programContainer.program.ContainsComponent<StatusCode>())
-                        {
-                            programContainer.program.SetComponent(statusCode);
-                        }
-                        else
-                        {
-                            programContainer.program.AddComponent(statusCode);
-                        }
-
-                        programContainer.finished = true;
-                        programContainer.finish.Invoke(this, allocation, programWorld, statusCode);
+                        program.world.Clear();
+                        program.start.Invoke(this, program.allocation, program.world);
+                        container.didFinish = false;
                     }
                     else
                     {
-                        updatedPrograms++;
+                        program.start.Invoke(this, program.allocation, program.world);
+                        programs.Add(r.entity, new(r.entity, program, program.world, program.allocation));
+                    }
+                }
+            }
+        }
+
+        private readonly void UpdateEachProgram(TimeSpan delta)
+        {
+            World hostWorld = World;
+            ComponentQuery<IsProgram> query = new(hostWorld);
+            Dictionary<uint, ProgramContainer> programs = Programs;
+            foreach (var r in query)
+            {
+                ref IsProgram program = ref r.component1;
+                if (program.state == IsProgram.State.Active)
+                {
+                    program.statusCode = program.update.Invoke(this, program.allocation, program.world, delta);
+                    if (program.statusCode != StatusCode.Continue)
+                    {
+                        program.state = IsProgram.State.Finished;
+                        program.finish.Invoke(this, program.allocation, program.world, program.statusCode);
+
+                        ref ProgramContainer container = ref programs[r.entity];
+                        container.didFinish = true;
                     }
                 }
             }
@@ -205,138 +299,74 @@ namespace Simulation
         /// </summary>
         public readonly void UpdateSystems(TimeSpan delta)
         {
-            InitializeSystems();
+            InitializeSystemsNotStarted();
 
             World hostWorld = World;
-            USpan<SystemContainer> systems = UnsafeSimulator.GetSystems(value);
-
-            //update systems with host world
+            USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
                 system.Update(hostWorld, delta);
             }
 
-            //update systems with each program worlds
-            ref List<ProgramContainer> knownPrograms = ref UnsafeSimulator.GetKnownPrograms(value);
-            for (uint p = 0; p < knownPrograms.Count; p++)
+            UpdateSystemsWithProgramWorlds(delta);
+        }
+
+        private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta)
+        {
+            World hostWorld = World;
+            USpan<SystemContainer> systems = Systems;
+            ComponentQuery<IsProgram> query = new(hostWorld);
+            foreach (var r in query)
             {
-                ref ProgramContainer programContainer = ref knownPrograms[p];
-                if (!programContainer.finished)
+                ref IsProgram program = ref r.component1;
+                if (program.state == IsProgram.State.Active)
                 {
-                    World programWorld = programContainer.world;
+                    World programWorld = program.world;
                     for (uint s = 0; s < systems.Length; s++)
                     {
-                        ref SystemContainer system = ref systems[s];
-                        system.Update(programWorld, delta);
+                        ref SystemContainer container = ref systems[s];
+                        container.Update(programWorld, delta);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// Submits a message for a potential system to handle.
-        /// </summary>
-        /// <returns><c>true</c> if it was handled.</returns>
-        public readonly bool TryHandleMessage<T>(T message) where T : unmanaged
+        private readonly void InitializeSystemsNotStarted()
         {
-            InitializeSystems();
-            InitializePrograms();
-
-            using Allocation messageContainer = Allocation.Create(message);
-            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
-            USpan<SystemContainer> systems = UnsafeSimulator.GetSystems(value);
             World hostWorld = World;
-            bool handled = false;
-
-            //tell host world
+            USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
-                ref SystemContainer system = ref systems[i];
-                handled |= system.TryHandleMessage(hostWorld, messageType, messageContainer);
-            }
-
-            //tell program worlds
-            ref ComponentQuery<IsProgram> query = ref UnsafeSimulator.GetProgramQuery(value);
-            query.Update(hostWorld, true);
-            foreach (var x in query)
-            {
-                uint programEntity = x.entity;
-                if (!hostWorld.ContainsComponent<StatusCode>(programEntity))
+                ref SystemContainer container = ref systems[i];
+                if (!container.IsInitializedWith(hostWorld))
                 {
-                    ProgramAllocation programAllocation = hostWorld.GetComponent<ProgramAllocation>(programEntity);
-                    for (uint i = 0; i < systems.Length; i++)
-                    {
-                        ref SystemContainer system = ref systems[i];
-                        handled |= system.TryHandleMessage(programAllocation.world, messageType, messageContainer);
-                    }
+                    container.Start(hostWorld);
                 }
             }
 
-            return handled;
+            InitializeSystemsWithProgramWorlds();
         }
 
-        private readonly void InitializeSystems()
-        {
-            ref List<ProgramContainer> knownPrograms = ref UnsafeSimulator.GetKnownPrograms(value);
-            USpan<SystemContainer> systems = UnsafeSimulator.GetSystems(value);
-            for (uint p = 0; p < knownPrograms.Count; p++)
-            {
-                ref ProgramContainer programContainer = ref knownPrograms[p];
-                World programWorld = programContainer.world;
-                for (uint s = 0; s < systems.Length; s++)
-                {
-                    ref SystemContainer system = ref systems[s];
-                    if (!system.IsInitializedWith(programWorld))
-                    {
-                        system.Initialize(programWorld);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Makes uninitialized programs active, and ensures they have
-        /// their own world and allocations created for.
-        /// </summary>
-        private readonly void InitializePrograms()
+        private readonly void InitializeSystemsWithProgramWorlds()
         {
             World hostWorld = World;
-            ref List<ProgramContainer> knownPrograms = ref UnsafeSimulator.GetKnownPrograms(value);
-            ref ComponentQuery<IsProgram> query = ref UnsafeSimulator.GetProgramQuery(value);
-            query.Update(hostWorld, true);
-            foreach (var x in query)
+            ComponentQuery<IsProgram> query = new(hostWorld);
+            USpan<SystemContainer> systems = Systems;
+            foreach (var r in query)
             {
-                Entity program = new(hostWorld, x.entity);
-                ref IsProgram component = ref x.Component1;
-                if (component.state == IsProgram.State.Uninitialized)
+                ref IsProgram program = ref r.component1;
+                if (program.state != IsProgram.State.Finished)
                 {
-                    component.state = IsProgram.State.Active;
-                    if (!program.TryGetComponent(out ProgramAllocation programAllocation))
+                    World programWorld = program.world;
+                    for (uint s = 0; s < systems.Length; s++)
                     {
-                        World newProgramWorld = new();
-                        Allocation newProgramAllocation = new(component.typeSize);
-                        ProgramContainer programContainer = new(component, newProgramWorld, program, newProgramAllocation);
-                        programAllocation = new(newProgramAllocation, newProgramWorld);
-                        program.AddComponent(programAllocation);
-                        knownPrograms.Add(programContainer);
-                    }
-                    else
-                    {
-                        //reset old existing program
-                        for (uint i = 0; i < knownPrograms.Count; i++)
+                        ref SystemContainer container = ref systems[s];
+                        if (!container.IsInitializedWith(programWorld))
                         {
-                            ref ProgramContainer knownProgram = ref knownPrograms[i];
-                            if (knownProgram.allocation == programAllocation.allocation)
-                            {
-                                knownProgram.finished = false;
-                                programAllocation.allocation.Clear(component.typeSize);
-                                programAllocation.world.Clear();
-                            }
+                            container.Start(programWorld);
                         }
                     }
-
-                    component.start.Invoke(this, programAllocation.allocation, programAllocation.world);
                 }
             }
         }
@@ -344,9 +374,9 @@ namespace Simulation
         /// <summary>
         /// Adds a system to the simulator without initializing it.
         /// </summary>
-        public readonly SystemContainer<T> AddSystem<T>() where T : unmanaged, ISystem
+        public readonly SystemContainer<T> AddSystem<T>(T system) where T : unmanaged, ISystem
         {
-            return UnsafeSimulator.AddSystem<T>(value);
+            return UnsafeSimulator.AddSystem(value, system);
         }
 
         /// <summary>
@@ -355,6 +385,7 @@ namespace Simulation
         public readonly void RemoveSystem<T>() where T : unmanaged, ISystem
         {
             ThrowIfSystemIsMissing<T>();
+
             UnsafeSimulator.RemoveSystem<T>(value);
         }
 
@@ -364,7 +395,7 @@ namespace Simulation
         public readonly bool ContainsSystem<T>() where T : unmanaged, ISystem
         {
             nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
-            USpan<SystemContainer> systems = UnsafeSimulator.GetSystems(value);
+            USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
@@ -387,7 +418,7 @@ namespace Simulation
         public readonly SystemContainer<T> GetSystem<T>() where T : unmanaged, ISystem
         {
             nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
-            USpan<SystemContainer> systems = UnsafeSimulator.GetSystems(value);
+            USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
@@ -408,7 +439,7 @@ namespace Simulation
         public readonly void ThrowIfSystemIsMissing<T>() where T : unmanaged, ISystem
         {
             nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
-            USpan<SystemContainer> systems = UnsafeSimulator.GetSystems(value);
+            USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
@@ -419,6 +450,31 @@ namespace Simulation
             }
 
             throw new InvalidOperationException($"System `{typeof(T)}` is not registered in the simulator");
+        }
+
+        public readonly override bool Equals(object? obj)
+        {
+            return obj is Simulator simulator && Equals(simulator);
+        }
+
+        public readonly bool Equals(Simulator other)
+        {
+            return value == other.value;
+        }
+
+        public readonly override int GetHashCode()
+        {
+            return ((nint)value).GetHashCode();
+        }
+
+        public static bool operator ==(Simulator left, Simulator right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Simulator left, Simulator right)
+        {
+            return !(left == right);
         }
     }
 }
