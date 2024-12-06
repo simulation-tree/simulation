@@ -24,9 +24,5 @@ namespace Simulation.Tests
                 systemContainer.Simulator.RemoveSystem<SimpleSystem>();
             }
         }
-
-        void IDisposable.Dispose()
-        {
-        }
     }
 }

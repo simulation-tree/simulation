@@ -11,7 +11,7 @@ namespace Simulation.Tests
             simulator.UpdateSystems(TimeSpan.MinValue);
         }
 
-        void IProgram.Initialize(in Simulator simulator, in Allocation allocation, in World world)
+        void IProgram.Start(in Simulator simulator, in Allocation allocation, in World world)
         {
             allocation.Write(new ProgramThatUpdatesSystemsOnStart(simulator));
         }
@@ -21,7 +21,7 @@ namespace Simulation.Tests
             return StatusCode.Success(0);
         }
 
-        void IDisposable.Dispose()
+        void IProgram.Finish(in StatusCode statusCode)
         {
         }
     }

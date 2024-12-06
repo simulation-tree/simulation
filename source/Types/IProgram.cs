@@ -5,7 +5,7 @@ using Worlds;
 
 namespace Simulation
 {
-    public interface IProgram : IDisposable
+    public interface IProgram
     {
         public (StartProgram start, UpdateProgram update, FinishProgram finish) Functions
         {
@@ -18,11 +18,13 @@ namespace Simulation
         /// <summary>
         /// Initializes the program with its own program <see cref="World"/> instance.
         /// </summary>
-        void Initialize(in Simulator simulator, in Allocation allocation, in World world);
+        void Start(in Simulator simulator, in Allocation allocation, in World world);
 
         /// <summary>
         /// Updates the program forward with the <see cref="World"/> that it was initialized with.
         /// </summary>
         StatusCode Update(in TimeSpan delta);
+
+        void Finish(in StatusCode statusCode);
     }
 }

@@ -8,7 +8,7 @@ namespace Simulation
     /// <summary>
     /// Describes a system type added to <see cref="Simulator"/> instances.
     /// </summary>
-    public interface ISystem : IDisposable
+    public interface ISystem
     {
         public (StartSystem start, UpdateSystem update, FinishSystem finish) Functions
         {

@@ -17,10 +17,6 @@ namespace Simulation.Tests
             this.finishedWorlds = finishedWorlds;
         }
 
-        void IDisposable.Dispose()
-        {
-        }
-
         void ISystem.Start(in SystemContainer systemContainer, in World world)
         {
             startedWorlds.Add(systemContainer);
