@@ -7,15 +7,17 @@ namespace Simulation.Tests
     {
         private readonly uint value;
 
-        public SimpleSystem()
+        private SimpleSystem(uint value)
         {
-            value = 4;
+            this.value = value;
         }
 
         void ISystem.Start(in SystemContainer systemContainer, in World world)
         {
             if (systemContainer.World == world)
             {
+                systemContainer.Write(new SimpleSystem(4));
+
                 Entity entity = new(systemContainer.World);
                 entity.AddComponent(value);
             }

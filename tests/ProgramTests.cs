@@ -2,6 +2,7 @@
 using Simulation.Components;
 using System;
 using System.Threading;
+using Unmanaged;
 using Worlds;
 
 namespace Simulation.Tests
@@ -58,7 +59,7 @@ namespace Simulation.Tests
             Simulator.Update(); //to invoke the finisher
 
             Assert.That(calculator.value, Is.EqualTo(calculator.additive));
-            Assert.That(calculator.text.ToString(), Is.Not.EqualTo("Success 0"));
+            Assert.That(calculator.text.ToString(), Is.EqualTo(StatusCode.Termination.ToString()));
         }
 
         [Test]
@@ -101,7 +102,8 @@ namespace Simulation.Tests
             using List<SystemContainer> updatedWorlds = new();
             using List<SystemContainer> finishedWorlds = new();
 
-            SystemContainer<DummySystem> system = Simulator.AddSystem(new DummySystem(startedWorlds, updatedWorlds, finishedWorlds));
+            Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
+            SystemContainer<DummySystem> system = Simulator.AddSystem<DummySystem>(input);
             {
                 using (Program program = Program.Create(World, new DummyProgram(TimeSpan.FromSeconds(2))))
                 {
@@ -134,7 +136,8 @@ namespace Simulation.Tests
             using List<SystemContainer> updatedWorlds = new();
             using List<SystemContainer> finishedWorlds = new();
 
-            SystemContainer<DummySystem> system = Simulator.AddSystem(new DummySystem(startedWorlds, updatedWorlds, finishedWorlds));
+            Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
+            SystemContainer<DummySystem> system = Simulator.AddSystem<DummySystem>(input);
             {
                 using (Program program = Program.Create(World, new ProgramThatUpdatesSystemsOnStart()))
                 {

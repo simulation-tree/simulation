@@ -9,7 +9,7 @@ namespace Simulation.Tests
         {
             if (systemContainer.World == world)
             {
-                systemContainer.Simulator.AddSystem(new SimpleSystem());
+                systemContainer.Simulator.AddSystem<SimpleSystem>();
             }
         }
 

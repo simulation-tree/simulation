@@ -86,7 +86,7 @@ namespace Simulation
         /// </summary>
         public void Dispose()
         {
-            StatusCode statusCode = StatusCode.Success(byte.MaxValue);
+            StatusCode statusCode = StatusCode.Termination;
             InitializeSystemsNotStarted();
             FinishDestroyedPrograms(statusCode);
             InitializeEachProgram();
@@ -239,7 +239,7 @@ namespace Simulation
         /// </summary>
         public readonly void UpdatePrograms(TimeSpan delta)
         {
-            FinishDestroyedPrograms(StatusCode.Success(byte.MaxValue));
+            FinishDestroyedPrograms(StatusCode.Termination);
             InitializeEachProgram();
             UpdateEachProgram(delta);
         }
@@ -374,9 +374,15 @@ namespace Simulation
         /// <summary>
         /// Adds a system to the simulator without initializing it.
         /// </summary>
-        public readonly SystemContainer<T> AddSystem<T>(T system) where T : unmanaged, ISystem
+        public readonly SystemContainer<T> AddSystem<T>() where T : unmanaged, ISystem
         {
-            return UnsafeSimulator.AddSystem(value, system);
+            Allocation emptyInput = new(0);
+            return UnsafeSimulator.AddSystem<T>(value, emptyInput);
+        }
+
+        public readonly SystemContainer<T> AddSystem<T>(Allocation input) where T : unmanaged, ISystem
+        {
+            return UnsafeSimulator.AddSystem<T>(value, input);
         }
 
         /// <summary>
@@ -424,7 +430,7 @@ namespace Simulation
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
                 {
-                    return new(value, i);
+                    return new(value, i, system.systemType);
                 }
             }
 

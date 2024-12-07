@@ -20,7 +20,7 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(hostWorld))
                 {
-                    simulator.AddSystem(new SimpleSystem());
+                    simulator.AddSystem<SimpleSystem>();
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
@@ -49,7 +49,7 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(world))
                 {
-                    simulator.AddSystem(new MessageHandlerSystem());
+                    simulator.AddSystem<MessageHandlerSystem>();
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
@@ -76,7 +76,7 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(world))
                 {
-                    simulator.AddSystem(new StackedSystem());
+                    simulator.AddSystem<StackedSystem>();
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(2));
 

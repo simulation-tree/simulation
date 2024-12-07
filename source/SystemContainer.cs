@@ -17,11 +17,8 @@ namespace Simulation
         /// </summary>
         public readonly nint systemType;
 
-        /// <summary>
-        /// Native memory containing the system's data.
-        /// </summary>
-        public readonly Allocation allocation;
-
+        private readonly Allocation allocation;
+        private readonly Allocation input;
         private readonly Dictionary<nint, HandleMessage> handlers;
         private readonly List<World> programWorlds;
         private readonly UnsafeSimulator* simulator;
@@ -52,12 +49,18 @@ namespace Simulation
         }
 
         /// <summary>
+        /// The input data that this system was created with.
+        /// </summary>
+        public readonly Allocation Input => input;
+
+        /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        public SystemContainer(UnsafeSimulator* simulator, Allocation system, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
+        public SystemContainer(UnsafeSimulator* simulator, Allocation allocation, Allocation input, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
         {
             this.simulator = simulator;
-            this.allocation = system;
+            this.allocation = allocation;
+            this.input = input;
             this.systemType = systemType;
             this.handlers = handlers;
             programWorlds = new();
@@ -98,6 +101,7 @@ namespace Simulation
                 Finalize(programWorlds[i]);
             }
 
+            input.Dispose();
             allocation.Dispose();
             programWorlds.Dispose();
             handlers.Dispose();
@@ -108,7 +112,19 @@ namespace Simulation
         /// </summary>
         public readonly ref T Read<T>() where T : unmanaged, ISystem
         {
+            ThrowIfNotSameType<T>();
+
             return ref allocation.Read<T>();
+        }
+
+        /// <summary>
+        /// Writes the system data.
+        /// </summary>
+        public readonly void Write<T>(T value) where T : unmanaged, ISystem
+        {
+            ThrowIfNotSameType<T>();
+
+            allocation.Write(value);
         }
 
         /// <summary>
@@ -195,6 +211,16 @@ namespace Simulation
                 throw new InvalidOperationException($"System `{this}` is already initialized with world `{programWorld}`");
             }
         }
+
+        [Conditional("DEBUG")]
+        public readonly void ThrowIfNotSameType<T>() where T : unmanaged, ISystem
+        {
+            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            if (this.systemType != systemType)
+            {
+                throw new InvalidOperationException($"System `{this}` is not of type `{typeof(T)}`");
+            }
+        }
     }
 
     /// <summary>
@@ -204,11 +230,20 @@ namespace Simulation
     {
         private readonly UnsafeSimulator* simulator;
         private readonly uint index;
+        private readonly nint systemType;
 
         /// <summary>
         /// The system's data.
         /// </summary>
-        public readonly ref T Value => ref Container.allocation.Read<T>();
+        public readonly ref T Value
+        {
+            get
+            {
+                ThrowIfSystemIsDifferent();
+
+                return ref Container.Read<T>();
+            }
+        }
 
         /// <summary>
         /// The <see cref="Simulation.Simulator"/> that this system was created in.
@@ -226,10 +261,11 @@ namespace Simulation
         /// Initializes a new <see cref="SystemContainer{T}"/> instance with an
         /// existing system index.
         /// </summary>
-        public SystemContainer(UnsafeSimulator* simulator, uint index)
+        internal SystemContainer(UnsafeSimulator* simulator, uint index, nint systemType)
         {
             this.simulator = simulator;
             this.index = index;
+            this.systemType = systemType;
         }
 
         public readonly void RemoveSelf()
@@ -237,7 +273,15 @@ namespace Simulation
             Simulator.RemoveSystem<T>();
         }
 
-        /// <inheritdoc/>
+        [Conditional("DEBUG")]
+        public readonly void ThrowIfSystemIsDifferent()
+        {
+            if (Container.systemType != systemType)
+            {
+                throw new InvalidOperationException($"System at index `{index}` is not of expected type `{typeof(T)}`");
+            }
+        }
+
         public static implicit operator SystemContainer(SystemContainer<T> container)
         {
             return container.Container;

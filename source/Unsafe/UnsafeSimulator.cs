@@ -101,11 +101,12 @@ namespace Simulation
         /// Adds a system of type <typeparamref name="T"/> to a <see cref="UnsafeSimulator"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
-        public static SystemContainer<T> AddSystem<T>(UnsafeSimulator* simulator, T system) where T : unmanaged, ISystem
+        public static SystemContainer<T> AddSystem<T>(UnsafeSimulator* simulator, Allocation input) where T : unmanaged, ISystem
         {
             Allocations.ThrowIfNull(simulator);
 
-            (StartSystem start, UpdateSystem update, FinishSystem finish) = system.Functions;
+            T staticTemplate = default;
+            (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
             if (start == default || update == default || finish == default)
             {
                 throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
@@ -115,11 +116,11 @@ namespace Simulation
             RuntimeTypeHandle systemType = typeof(T).TypeHandle;
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            Allocation instance = Allocation.Create(system);
+            Allocation allocation = Allocation.Create(staticTemplate);
 
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[32];
-            uint messageHandlerCount = system.GetMessageHandlers(buffer);
+            uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
             Dictionary<nint, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
@@ -140,9 +141,9 @@ namespace Simulation
                 handlers = new(1);
             }
 
-            SystemContainer container = new(simulator, instance, RuntimeTypeHandle.ToIntPtr(systemType), handlers, start, update, finish);
+            SystemContainer container = new(simulator, allocation, input, RuntimeTypeHandle.ToIntPtr(systemType), handlers, start, update, finish);
             simulator->systems.Add(container);
-            SystemContainer<T> genericContainer = new(simulator, simulator->systems.Count - 1);
+            SystemContainer<T> genericContainer = new(simulator, simulator->systems.Count - 1, container.systemType);
             container.Start(hostWorld);
             return genericContainer;
         }

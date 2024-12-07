@@ -7,6 +7,9 @@ namespace Simulation
 {
     /// <summary>
     /// Describes a system type added to <see cref="Simulator"/> instances.
+    /// <para>
+    /// Initialized with default memory.
+    /// </para>
     /// </summary>
     public interface ISystem
     {

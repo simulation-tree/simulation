@@ -1,16 +1,17 @@
 ﻿using Collections;
 using System;
+using Unmanaged;
 using Worlds;
 
 namespace Simulation.Tests
 {
     public readonly partial struct DummySystem : ISystem
     {
-        public readonly List<SystemContainer> startedWorlds;
-        public readonly List<SystemContainer> updatedWorlds;
-        public readonly List<SystemContainer> finishedWorlds;
+        private readonly List<SystemContainer> startedWorlds;
+        private readonly List<SystemContainer> updatedWorlds;
+        private readonly List<SystemContainer> finishedWorlds;
 
-        public DummySystem(List<SystemContainer> startedWorlds, List<SystemContainer> updatedWorlds, List<SystemContainer> finishedWorlds)
+        private DummySystem(List<SystemContainer> startedWorlds, List<SystemContainer> updatedWorlds, List<SystemContainer> finishedWorlds)
         {
             this.startedWorlds = startedWorlds;
             this.updatedWorlds = updatedWorlds;
@@ -19,6 +20,15 @@ namespace Simulation.Tests
 
         void ISystem.Start(in SystemContainer systemContainer, in World world)
         {
+            if (systemContainer.World == world)
+            {
+                uint stride = TypeInfo<List<SystemContainer>>.size;
+                List<SystemContainer> startedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 0);
+                List<SystemContainer> updatedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 1);
+                List<SystemContainer> finishedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 2);
+                systemContainer.Write(new DummySystem(startedWorlds, updatedWorlds, finishedWorlds));
+            }
+
             startedWorlds.Add(systemContainer);
         }
 
