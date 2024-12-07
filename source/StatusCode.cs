@@ -5,7 +5,15 @@ namespace Simulation
 {
     public readonly struct StatusCode : IEquatable<StatusCode>
     {
+        /// <summary>
+        /// Indicates that the program should continue running.
+        /// </summary>
         public static readonly StatusCode Continue = new(0);
+
+        /// <summary>
+        /// Indicates that the program was terminated externally, and not on its own.
+        /// </summary>
+        public static readonly StatusCode Termination = Failure(byte.MaxValue);
 
         private readonly ushort value;
 
