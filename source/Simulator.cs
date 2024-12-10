@@ -377,12 +377,52 @@ namespace Simulation
         public readonly SystemContainer<T> AddSystem<T>() where T : unmanaged, ISystem
         {
             Allocation emptyInput = new(0);
-            return UnsafeSimulator.AddSystem<T>(value, emptyInput);
+            return UnsafeSimulator.InsertSystem<T>(value, Systems.Length, emptyInput);
         }
 
         public readonly SystemContainer<T> AddSystem<T>(Allocation input) where T : unmanaged, ISystem
         {
-            return UnsafeSimulator.AddSystem<T>(value, input);
+            return UnsafeSimulator.InsertSystem<T>(value, Systems.Length, input);
+        }
+
+        public readonly SystemContainer<T> InsertSystem<T>(uint index) where T : unmanaged, ISystem
+        {
+            Allocation emptyInput = new(0);
+            return UnsafeSimulator.InsertSystem<T>(value, index, emptyInput);
+        }
+
+        public readonly SystemContainer<T> AddSystemBefore<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
+        {
+            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(O).TypeHandle);
+            USpan<SystemContainer> systems = Systems;
+            for (uint i = 0; i < systems.Length; i++)
+            {
+                ref SystemContainer system = ref systems[i];
+                if (system.systemType == systemType)
+                {
+                    Allocation emptyInput = new(0);
+                    return UnsafeSimulator.InsertSystem<T>(value, i, emptyInput);
+                }
+            }
+
+            throw new InvalidOperationException($"System `{typeof(O)}` is not registered in the simulator");
+        }
+
+        public readonly SystemContainer<T> AddSystemAfter<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
+        {
+            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(O).TypeHandle);
+            USpan<SystemContainer> systems = Systems;
+            for (uint i = 0; i < systems.Length; i++)
+            {
+                ref SystemContainer system = ref systems[i];
+                if (system.systemType == systemType)
+                {
+                    Allocation emptyInput = new(0);
+                    return UnsafeSimulator.InsertSystem<T>(value, i + 1, emptyInput);
+                }
+            }
+
+            throw new InvalidOperationException($"System `{typeof(O)}` is not registered in the simulator");
         }
 
         /// <summary>

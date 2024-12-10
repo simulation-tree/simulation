@@ -98,10 +98,10 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Adds a system of type <typeparamref name="T"/> to a <see cref="UnsafeSimulator"/>.
+        /// Inserts a system of type <typeparamref name="T"/> to a <see cref="UnsafeSimulator"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
-        public static SystemContainer<T> AddSystem<T>(UnsafeSimulator* simulator, Allocation input) where T : unmanaged, ISystem
+        public static SystemContainer<T> InsertSystem<T>(UnsafeSimulator* simulator, uint index, Allocation input) where T : unmanaged, ISystem
         {
             Allocations.ThrowIfNull(simulator);
 
@@ -142,8 +142,8 @@ namespace Simulation
             }
 
             SystemContainer container = new(simulator, allocation, input, RuntimeTypeHandle.ToIntPtr(systemType), handlers, start, update, finish);
-            simulator->systems.Add(container);
-            SystemContainer<T> genericContainer = new(simulator, simulator->systems.Count - 1, container.systemType);
+            simulator->systems.Insert(index, container);
+            SystemContainer<T> genericContainer = new(simulator, index, container.systemType);
             container.Start(hostWorld);
             return genericContainer;
         }
