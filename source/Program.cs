@@ -23,15 +23,21 @@ namespace Simulation
 
         readonly uint IEntity.Value => entity.GetEntityValue();
         readonly World IEntity.World => entity.GetWorld();
-        readonly Definition IEntity.Definition => new Definition().AddComponentType<IsProgram>();
+
+        readonly Definition IEntity.GetDefinition(Schema schema)
+        {
+            return new Definition().AddComponentType<IsProgram>(schema);
+        }
 
         /// <summary>
         /// Creates a new program in the given <see cref="World"/>.
         /// </summary>
         public Program(World hostWorld, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation)
         {
+            World programWorld = new();
+            programWorld.Schema.CopyFrom(hostWorld.Schema);
             entity = new(hostWorld);
-            entity.AddComponent(new IsProgram(start, update, finish, typeSize, allocation, new()));
+            entity.AddComponent(new IsProgram(start, update, finish, typeSize, allocation, programWorld));
         }
 
         /// <summary>
@@ -124,7 +130,11 @@ namespace Simulation
 
         readonly uint IEntity.Value => program.GetEntityValue();
         readonly World IEntity.World => program.GetWorld();
-        readonly Definition IEntity.Definition => new Definition().AddComponentType<IsProgram>();
+
+        readonly Definition IEntity.GetDefinition(Schema schema)
+        {
+            return new Definition().AddComponentType<IsProgram>(schema);
+        }
 
         public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation)
         {

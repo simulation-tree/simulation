@@ -3,29 +3,22 @@ using Simulation.Components;
 using System;
 using System.Threading;
 using Unmanaged;
-using Worlds;
 
 namespace Simulation.Tests
 {
     public class ProgramTests : SimulationTests
     {
-        protected override void SetUp()
-        {
-            base.SetUp();
-            ComponentType.Register<bool>();
-        }
-
         [Test]
         [CancelAfter(1000)]
         public void SimpleProgram(CancellationToken token)
         {
-            Program program = Program.Create(World, new Calculator());
+            Program program = Program.Create(world, new Calculator());
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
             StatusCode statusCode;
             do
             {
-                Simulator.Update();
+                simulator.Update();
 
                 ref Calculator calculator = ref program.Read<Calculator>();
                 Console.WriteLine(calculator.value);
@@ -46,17 +39,17 @@ namespace Simulation.Tests
         [Test]
         public void ExitEarly()
         {
-            Program program = Program.Create(World, new Calculator());
+            Program program = Program.Create(world, new Calculator());
 
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
-            Simulator.Update(); //to invoke the initializer and update
+            simulator.Update(); //to invoke the initializer and update
             ref Calculator calculator = ref program.Read<Calculator>();
 
             Assert.That(calculator.text.ToString(), Is.EqualTo("Running2"));
             program.Dispose();
 
-            Simulator.Update(); //to invoke the finisher
+            simulator.Update(); //to invoke the finisher
 
             Assert.That(calculator.value, Is.EqualTo(calculator.additive));
             Assert.That(calculator.text.ToString(), Is.EqualTo(StatusCode.Termination.ToString()));
@@ -66,11 +59,11 @@ namespace Simulation.Tests
         [CancelAfter(1000)]
         public void ReRunProgram(CancellationToken token)
         {
-            Program program = Program.Create(World, new Calculator());
+            Program program = Program.Create(world, new Calculator());
 
             while (!program.IsFinished(out StatusCode statusCode))
             {
-                Simulator.Update();
+                simulator.Update();
                 if (token.IsCancellationRequested)
                 {
                     Assert.Fail("Test took too long");
@@ -84,7 +77,7 @@ namespace Simulation.Tests
 
             while (!program.IsFinished(out StatusCode statusCode))
             {
-                Simulator.Update();
+                simulator.Update();
                 if (token.IsCancellationRequested)
                 {
                     Assert.Fail("Test took too long");
@@ -103,14 +96,14 @@ namespace Simulation.Tests
             using List<SystemContainer> finishedWorlds = new();
 
             Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
-            SystemContainer<DummySystem> system = Simulator.AddSystem<DummySystem>(input);
+            SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
-                using (Program program = Program.Create(World, new DummyProgram(TimeSpan.FromSeconds(2))))
+                using (Program program = Program.Create(world, new DummyProgram(TimeSpan.FromSeconds(2))))
                 {
                     StatusCode statusCode;
                     while (!program.IsFinished(out statusCode))
                     {
-                        Simulator.Update();
+                        simulator.Update();
 
                         if (token.IsCancellationRequested)
                         {
@@ -137,14 +130,14 @@ namespace Simulation.Tests
             using List<SystemContainer> finishedWorlds = new();
 
             Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
-            SystemContainer<DummySystem> system = Simulator.AddSystem<DummySystem>(input);
+            SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
-                using (Program program = Program.Create(World, new ProgramThatUpdatesSystemsOnStart()))
+                using (Program program = Program.Create(world, new ProgramThatUpdatesSystemsOnStart()))
                 {
                     StatusCode statusCode;
                     while (!program.IsFinished(out statusCode))
                     {
-                        Simulator.Update();
+                        simulator.Update();
 
                         if (token.IsCancellationRequested)
                         {

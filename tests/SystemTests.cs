@@ -5,18 +5,10 @@ namespace Simulation.Tests
 {
     public class SystemTests : SimulationTests
     {
-        protected override void SetUp()
-        {
-            base.SetUp();
-            ComponentType.Register<FixedString>();
-            ComponentType.Register<uint>();
-            ComponentType.Register<bool>();
-        }
-
         [Test]
         public void SimpleTest()
         {
-            using (World hostWorld = new())
+            using (World hostWorld = CreateWorld())
             {
                 using (Simulator simulator = new(hostWorld))
                 {
@@ -45,7 +37,7 @@ namespace Simulation.Tests
         [Test]
         public void ReceiveMessages()
         {
-            using (World world = new())
+            using (World world = CreateWorld())
             {
                 using (Simulator simulator = new(world))
                 {
@@ -72,7 +64,7 @@ namespace Simulation.Tests
         [Test, CancelAfter(1000)]
         public void SystemInsideSystem()
         {
-            using (World world = new())
+            using (World world = CreateWorld())
             {
                 using (Simulator simulator = new(world))
                 {

@@ -1,7 +1,8 @@
 ﻿using Simulation.Components;
-using System.Threading.Tasks;
-using System.Threading;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Unmanaged;
 using Unmanaged.Tests;
 using Worlds;
 
@@ -9,32 +10,53 @@ namespace Simulation.Tests
 {
     public abstract class SimulationTests : UnmanagedTests
     {
-        private World world;
-        private Simulator simulator;
+        protected World world;
+        protected Simulator simulator;
 
-        public World World => world;
-        public Simulator Simulator => simulator;
+        static SimulationTests()
+        {
+            TypeLayout.Register<IsProgram>("IsProgram");
+            TypeLayout.Register<bool>("bool");
+            TypeLayout.Register<FixedString>("FixedString");
+            TypeLayout.Register<uint>("uint");
+            TypeLayout.Register<float>("float");
+            TypeLayout.Register<ulong>("ulong");
+            TypeLayout.Register<byte>("byte");
+            TypeLayout.Register<int>("int");
+        }
 
         protected override void SetUp()
         {
             base.SetUp();
-            ComponentType.Register<IsProgram>();
-            ComponentType.Register<StatusCode>();
-            world = new();
+            world = CreateWorld();
             simulator = new(world);
         }
 
-        protected override void CleanUp()
+        protected override void TearDown()
         {
             simulator.Dispose();
             world.Dispose();
-            base.CleanUp();
+            base.TearDown();
         }
 
         protected async Task Simulate(World world, CancellationToken cancellation)
         {
-            TimeSpan delta = Simulator.Update();
+            TimeSpan delta = simulator.Update();
             await Task.Delay(delta, cancellation).ConfigureAwait(false);
+        }
+
+        protected static World CreateWorld()
+        {
+            World world = new();
+            world.Schema.RegisterComponent<IsProgram>();
+            world.Schema.RegisterComponent<bool>();
+            world.Schema.RegisterComponent<FixedString>();
+            world.Schema.RegisterComponent<uint>();
+            world.Schema.RegisterComponent<float>();
+            world.Schema.RegisterComponent<ulong>();
+            world.Schema.RegisterComponent<byte>();
+            world.Schema.RegisterComponent<int>();
+            return world;
         }
     }
 }
