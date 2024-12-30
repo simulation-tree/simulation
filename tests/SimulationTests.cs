@@ -15,14 +15,14 @@ namespace Simulation.Tests
 
         static SimulationTests()
         {
-            TypeLayout.Register<IsProgram>("IsProgram");
-            TypeLayout.Register<bool>("bool");
-            TypeLayout.Register<FixedString>("FixedString");
-            TypeLayout.Register<uint>("uint");
-            TypeLayout.Register<float>("float");
-            TypeLayout.Register<ulong>("ulong");
-            TypeLayout.Register<byte>("byte");
-            TypeLayout.Register<int>("int");
+            TypeLayout.Register<IsProgram>();
+            TypeLayout.Register<bool>();
+            TypeLayout.Register<FixedString>();
+            TypeLayout.Register<uint>();
+            TypeLayout.Register<float>();
+            TypeLayout.Register<ulong>();
+            TypeLayout.Register<byte>();
+            TypeLayout.Register<int>();
         }
 
         protected override void SetUp()
