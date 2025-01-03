@@ -312,6 +312,21 @@ namespace Simulation
             UpdateSystemsWithProgramWorlds(delta);
         }
 
+        /// <summary>
+        /// Updates all systems only with the given <paramref name="world"/>.
+        /// </summary>
+        public readonly void UpdateSystems(TimeSpan delta, World world)
+        {
+            InitializeSystemsNotStarted();
+
+            USpan<SystemContainer> systems = Systems;
+            for (uint i = 0; i < systems.Length; i++)
+            {
+                ref SystemContainer system = ref systems[i];
+                system.Update(world, delta);
+            }
+        }
+
         private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta)
         {
             World hostWorld = World;
