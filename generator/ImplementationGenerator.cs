@@ -95,10 +95,12 @@ namespace Simulation.Generator
             source.AppendLine("using Simulation;");
             source.AppendLine("using Simulation.Functions;");
             source.AppendLine("using System.Runtime.InteropServices;");
+            source.AppendLine("using System.ComponentModel;");
             source.AppendLine();
             source.AppendLine($"namespace {input.containingNamespace}");
             source.BeginGroup();
             {
+                source.AppendLine("[EditorBrowsable(EditorBrowsableState.Never)]");
                 if (input.typeSymbol.IsReadOnly)
                 {
                     source.AppendLine($"public readonly partial struct {input.typeName}");
