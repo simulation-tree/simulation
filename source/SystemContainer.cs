@@ -17,24 +17,23 @@ namespace Simulation
         /// </summary>
         public readonly nint systemType;
 
+        /// <summary>
+        /// The simulator that this system was created in.
+        /// </summary>
+        public readonly Simulator simulator;
+
         private readonly Allocation allocation;
         private readonly Allocation input;
         private readonly Dictionary<nint, HandleMessage> handlers;
         private readonly List<World> programWorlds;
-        private readonly UnsafeSimulator* simulator;
         private readonly StartSystem start;
         private readonly UpdateSystem update;
         private readonly FinishSystem finish;
 
         /// <summary>
-        /// Reference to the <see cref="Simulation.Simulator"/> that this system was created in.
-        /// </summary>
-        public readonly Simulator Simulator => new((nint)simulator);
-
-        /// <summary>
         /// The world that this system was created in.
         /// </summary>
-        public readonly World World => UnsafeSimulator.GetWorld(simulator);
+        public readonly World World => simulator.World;
 
         /// <summary>
         /// The <see cref="Type"/> of this system.
@@ -56,7 +55,7 @@ namespace Simulation
         /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        public SystemContainer(UnsafeSimulator* simulator, Allocation allocation, Allocation input, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
+        public SystemContainer(Simulator simulator, Allocation allocation, Allocation input, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
         {
             this.simulator = simulator;
             this.allocation = allocation;
@@ -91,11 +90,22 @@ namespace Simulation
             return buffer.Slice(0, length).ToString();
         }
 
+        [Conditional("DEBUG")]
+        private readonly void ThrowIfDisposed()
+        {
+            if (programWorlds.IsDisposed)
+            {
+                throw new ObjectDisposedException($"System `{this}` has been disposed");
+            }
+        }
+
         /// <summary>
         /// Finalizes the system and disposes of its resources.
         /// </summary>
         public readonly void Dispose()
         {
+            ThrowIfDisposed();
+
             for (uint i = programWorlds.Count - 1; i != uint.MaxValue; i--)
             {
                 Finalize(programWorlds[i]);
@@ -228,7 +238,8 @@ namespace Simulation
     /// </summary>
     public unsafe readonly struct SystemContainer<T> where T : unmanaged, ISystem
     {
-        private readonly UnsafeSimulator* simulator;
+        public readonly Simulator simulator;
+
         private readonly uint index;
         private readonly nint systemType;
 
@@ -246,22 +257,17 @@ namespace Simulation
         }
 
         /// <summary>
-        /// The <see cref="Simulation.Simulator"/> that this system was created in.
-        /// </summary>
-        public readonly Simulator Simulator => new((nint)simulator);
-
-        /// <summary>
         /// The world that this system was created in.
         /// </summary>
-        public readonly World World => UnsafeSimulator.GetWorld(simulator);
+        public readonly World World => simulator.World;
 
-        private unsafe readonly ref SystemContainer Container => ref UnsafeSimulator.GetSystems(simulator)[index];
+        private unsafe readonly ref SystemContainer Container => ref simulator.Systems[index];
 
         /// <summary>
         /// Initializes a new <see cref="SystemContainer{T}"/> instance with an
         /// existing system index.
         /// </summary>
-        internal SystemContainer(UnsafeSimulator* simulator, uint index, nint systemType)
+        internal SystemContainer(Simulator simulator, uint index, nint systemType)
         {
             this.simulator = simulator;
             this.index = index;
@@ -270,7 +276,7 @@ namespace Simulation
 
         public readonly void RemoveSelf()
         {
-            Simulator.RemoveSystem<T>();
+            simulator.RemoveSystem<T>();
         }
 
         [Conditional("DEBUG")]

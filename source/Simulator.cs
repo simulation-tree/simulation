@@ -1,5 +1,6 @@
 ﻿using Collections;
 using Simulation.Components;
+using Simulation.Functions;
 using System;
 using System.Diagnostics;
 using Unmanaged;
@@ -12,12 +13,12 @@ namespace Simulation
     /// </summary>
     public unsafe struct Simulator : IDisposable, IEquatable<Simulator>
     {
-        private UnsafeSimulator* value;
+        private Implementation* value;
 
         /// <summary>
         /// The world that this simulator was created for.
         /// </summary>
-        public readonly World World => UnsafeSimulator.GetWorld(value);
+        public readonly World World => Implementation.GetWorld(value);
 
         /// <summary>
         /// Checks if this simulator is disposed.
@@ -32,12 +33,12 @@ namespace Simulation
         /// <summary>
         /// All known programs that have ever been initialized.
         /// </summary>
-        public readonly Dictionary<uint, ProgramContainer> Programs => UnsafeSimulator.GetPrograms(value);
+        public readonly Dictionary<uint, ProgramContainer> Programs => Implementation.GetPrograms(value);
 
         /// <summary>
         /// All added systems.
         /// </summary>
-        public readonly USpan<SystemContainer> Systems => UnsafeSimulator.GetSystems(value).AsSpan();
+        public readonly USpan<SystemContainer> Systems => Implementation.GetSystems(value).AsSpan();
 
         /// <summary>
         /// All <see cref="Worlds.World"/> instances that belong exclusively to programs.
@@ -70,7 +71,15 @@ namespace Simulation
         /// </summary>
         public Simulator(nint address)
         {
-            value = (UnsafeSimulator*)address;
+            value = (Implementation*)address;
+        }
+
+        /// <summary>
+        /// Initializes an existing simulator from the given <paramref name="pointer"/>.
+        /// </summary>
+        public Simulator(void* pointer)
+        {
+            value = (Implementation*)pointer;
         }
 
         /// <summary>
@@ -78,7 +87,7 @@ namespace Simulation
         /// </summary>
         public Simulator(World world)
         {
-            value = UnsafeSimulator.Allocate(world);
+            value = Implementation.Allocate(world);
         }
 
         /// <summary>
@@ -93,11 +102,12 @@ namespace Simulation
             FinishAllPrograms(statusCode);
 
             //dispose systems
-            USpan<SystemContainer> systems = Systems;
-            for (uint i = systems.Length - 1; i != uint.MaxValue; i--)
+            List<SystemContainer> systems = value->systems;
+            while (systems.Count > 0)
             {
-                ref SystemContainer system = ref systems[i];
-                system.Dispose();
+                ref SystemContainer firstToRemove = ref systems[0];
+                firstToRemove.Dispose();
+                systems.RemoveAt(0);
             }
 
             //dispose programs
@@ -115,7 +125,7 @@ namespace Simulation
                 container.Dispose();
             }
 
-            UnsafeSimulator.Free(ref value);
+            Implementation.Free(ref value);
         }
 
         private readonly void FinishAllPrograms(StatusCode statusCode)
@@ -211,7 +221,7 @@ namespace Simulation
         /// <returns>The delta time that was used to update with.</returns>
         public readonly TimeSpan Update()
         {
-            ref DateTime lastUpdateTime = ref UnsafeSimulator.GetLastUpdateTime(value);
+            ref DateTime lastUpdateTime = ref Implementation.GetLastUpdateTime(value);
             DateTime now = DateTime.UtcNow;
             if (lastUpdateTime == DateTime.MinValue)
             {
@@ -392,18 +402,18 @@ namespace Simulation
         public readonly SystemContainer<T> AddSystem<T>() where T : unmanaged, ISystem
         {
             Allocation emptyInput = new(0);
-            return UnsafeSimulator.InsertSystem<T>(value, Systems.Length, emptyInput);
+            return Implementation.InsertSystem<T>(value, Systems.Length, emptyInput);
         }
 
         public readonly SystemContainer<T> AddSystem<T>(Allocation input) where T : unmanaged, ISystem
         {
-            return UnsafeSimulator.InsertSystem<T>(value, Systems.Length, input);
+            return Implementation.InsertSystem<T>(value, Systems.Length, input);
         }
 
         public readonly SystemContainer<T> InsertSystem<T>(uint index) where T : unmanaged, ISystem
         {
             Allocation emptyInput = new(0);
-            return UnsafeSimulator.InsertSystem<T>(value, index, emptyInput);
+            return Implementation.InsertSystem<T>(value, index, emptyInput);
         }
 
         public readonly SystemContainer<T> AddSystemBefore<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
@@ -416,7 +426,7 @@ namespace Simulation
                 if (system.systemType == systemType)
                 {
                     Allocation emptyInput = new(0);
-                    return UnsafeSimulator.InsertSystem<T>(value, i, emptyInput);
+                    return Implementation.InsertSystem<T>(value, i, emptyInput);
                 }
             }
 
@@ -433,7 +443,7 @@ namespace Simulation
                 if (system.systemType == systemType)
                 {
                     Allocation emptyInput = new(0);
-                    return UnsafeSimulator.InsertSystem<T>(value, i + 1, emptyInput);
+                    return Implementation.InsertSystem<T>(value, i + 1, emptyInput);
                 }
             }
 
@@ -443,11 +453,11 @@ namespace Simulation
         /// <summary>
         /// Removes a system from the simulator.
         /// </summary>
-        public readonly void RemoveSystem<T>() where T : unmanaged, ISystem
+        public readonly void RemoveSystem<T>(bool dispose = true) where T : unmanaged, ISystem
         {
             ThrowIfSystemIsMissing<T>();
 
-            UnsafeSimulator.RemoveSystem<T>(value);
+            Implementation.RemoveSystem<T>(value, dispose);
         }
 
         /// <summary>
@@ -485,7 +495,7 @@ namespace Simulation
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
                 {
-                    return new(value, i, system.systemType);
+                    return new(this, i, system.systemType);
                 }
             }
 
@@ -536,6 +546,174 @@ namespace Simulation
         public static bool operator !=(Simulator left, Simulator right)
         {
             return !(left == right);
+        }
+
+        /// <summary>
+        /// Opaque pointer implementation of a <see cref="Simulator"/>.
+        /// </summary>
+        public unsafe struct Implementation
+        {
+            public DateTime lastUpdateTime;
+            public readonly World world;
+            public readonly List<SystemContainer> systems;
+            public readonly Dictionary<uint, ProgramContainer> programs;
+
+            private Implementation(World world)
+            {
+                this.world = world;
+                lastUpdateTime = DateTime.MinValue;
+                systems = new();
+                programs = new();
+            }
+
+            /// <summary>
+            /// Allocates a new <see cref="Implementation"/> instance.
+            /// </summary>
+            public static Implementation* Allocate(World world)
+            {
+                Implementation* simulator = Allocations.Allocate<Implementation>();
+                *simulator = new(world);
+                return simulator;
+            }
+
+            /// <summary>
+            /// Frees the memory used by a <see cref="Implementation"/>.
+            /// </summary>
+            public static void Free(ref Implementation* simulator)
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                simulator->programs.Dispose();
+                simulator->systems.Dispose();
+                Allocations.Free(ref simulator);
+            }
+
+            /// <summary>
+            /// Retrieves the <see cref="World"/> that a <see cref="Implementation"/> operates in.
+            /// </summary>
+            public static World GetWorld(Implementation* simulator)
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                return simulator->world;
+            }
+
+            /// <summary>
+            /// Retrieves the last known time this simulator was updated.
+            /// </summary>
+            public static ref DateTime GetLastUpdateTime(Implementation* simulator)
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                return ref simulator->lastUpdateTime;
+            }
+
+            /// <summary>
+            /// Retrieves the systems added to a <see cref="Implementation"/>.
+            /// </summary>
+            public static List<SystemContainer> GetSystems(Implementation* simulator)
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                return simulator->systems;
+            }
+
+            /// <summary>
+            /// Retrieves the known programs in a <see cref="Implementation"/>.
+            /// </summary>
+            public static Dictionary<uint, ProgramContainer> GetPrograms(Implementation* simulator)
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                return simulator->programs;
+            }
+
+            /// <summary>
+            /// Retrieves the number of systems in a <see cref="Implementation"/>.
+            /// </summary>
+            public static uint GetSystemCount(Implementation* simulator)
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                return simulator->systems.Count;
+            }
+
+            /// <summary>
+            /// Inserts a system of type <typeparamref name="T"/> to a <see cref="Implementation"/>.
+            /// </summary>
+            /// <exception cref="InvalidOperationException"></exception>
+            public static SystemContainer<T> InsertSystem<T>(Implementation* simulator, uint index, Allocation input) where T : unmanaged, ISystem
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                T staticTemplate = default;
+                (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
+                if (start == default || update == default || finish == default)
+                {
+                    throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
+                }
+
+                World hostWorld = GetWorld(simulator);
+                RuntimeTypeHandle systemType = typeof(T).TypeHandle;
+                Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
+
+                Allocation allocation = Allocation.Create(staticTemplate);
+
+                //add message handlers
+                USpan<MessageHandler> buffer = stackalloc MessageHandler[32];
+                uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
+                Dictionary<nint, HandleMessage> handlers;
+                if (messageHandlerCount > 0)
+                {
+                    handlers = new(messageHandlerCount);
+                    for (uint i = 0; i < messageHandlerCount; i++)
+                    {
+                        MessageHandler handler = buffer[i];
+                        if (handler == default)
+                        {
+                            throw new InvalidOperationException($"Message handler at index {i} is uninitialized in system `{typeof(T)}`");
+                        }
+
+                        handlers.Add(handler.messageType, handler.function);
+                    }
+                }
+                else
+                {
+                    handlers = new(1);
+                }
+
+                SystemContainer container = new(new(simulator), allocation, input, RuntimeTypeHandle.ToIntPtr(systemType), handlers, start, update, finish);
+                simulator->systems.Insert(index, container);
+                SystemContainer<T> genericContainer = new(new(simulator), index, container.systemType);
+                container.Start(hostWorld);
+                return genericContainer;
+            }
+
+            /// <summary>
+            /// Removes a system of type <typeparamref name="T"/> from a <see cref="Implementation"/>.
+            /// </summary>
+            public static void RemoveSystem<T>(Implementation* simulator, bool dispose) where T : unmanaged, ISystem
+            {
+                Allocations.ThrowIfNull(simulator);
+
+                World world = GetWorld(simulator);
+                nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+                Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
+
+                for (uint i = 0; i < simulator->systems.Count; i++)
+                {
+                    ref SystemContainer system = ref simulator->systems[i];
+                    if (system.systemType == systemType)
+                    {
+                        if (dispose)
+                        {
+                            system.Dispose();
+                        }
+
+                        simulator->systems.RemoveAt(i);
+                    }
+                }
+            }
         }
     }
 }

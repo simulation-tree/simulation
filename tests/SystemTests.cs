@@ -92,5 +92,24 @@ namespace Simulation.Tests
                 Assert.That(secondEntity.GetComponent<bool>(), Is.EqualTo(true));
             }
         }
+
+        [Test, CancelAfter(1000)]
+        public void SystemDisposesWhenSimulatorIs()
+        {
+            using (World world = CreateWorld())
+            {
+                using (Simulator simulator = new(world))
+                {
+                    simulator.AddSystem<StackedSystem>();
+
+                    Assert.That(simulator.Systems.Length, Is.EqualTo(2));
+
+                    simulator.Update();
+                }
+
+                Entity secondEntity = new(world, 2);
+                Assert.That(secondEntity.GetComponent<bool>(), Is.EqualTo(true));
+            }
+        }
     }
 }
