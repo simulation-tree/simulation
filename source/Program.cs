@@ -24,9 +24,9 @@ namespace Simulation
         readonly uint IEntity.Value => entity.GetEntityValue();
         readonly World IEntity.World => entity.GetWorld();
 
-        readonly Definition IEntity.GetDefinition(Schema schema)
+        readonly void IEntity.Describe(ref Archetype archetype)
         {
-            return new Definition().AddComponentType<IsProgram>(schema);
+            archetype.AddComponentType<IsProgram>();
         }
 
         /// <summary>
@@ -131,9 +131,9 @@ namespace Simulation
         readonly uint IEntity.Value => program.GetEntityValue();
         readonly World IEntity.World => program.GetWorld();
 
-        readonly Definition IEntity.GetDefinition(Schema schema)
+        readonly void IEntity.Describe(ref Archetype archetype)
         {
-            return new Definition().AddComponentType<IsProgram>(schema);
+            archetype.Add<Program>();
         }
 
         public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation)
