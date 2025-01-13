@@ -54,9 +54,10 @@ namespace Simulation
         /// </summary>
         public readonly bool IsFinished(out StatusCode statusCode)
         {
-            if (State == IsProgram.State.Finished)
+            ref IsProgram component = ref entity.GetComponent<IsProgram>();
+            if (component.state == IsProgram.State.Finished)
             {
-                statusCode = entity.GetComponent<IsProgram>().statusCode;
+                statusCode = component.statusCode;
                 return true;
             }
             else
