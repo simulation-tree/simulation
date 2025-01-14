@@ -33,7 +33,7 @@ namespace Simulation.Tests
             Calculator finishedCalculator = program.Read<Calculator>();
             Assert.That(finishedCalculator.value, Is.EqualTo(finishedCalculator.limit * finishedCalculator.additive));
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Finished));
-            Assert.That(statusCode, Is.EqualTo(StatusCode.Success(100)));
+            Assert.That(statusCode, Is.EqualTo(StatusCode.Success(0)));
         }
 
         [Test]

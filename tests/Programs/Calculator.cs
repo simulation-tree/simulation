@@ -37,7 +37,7 @@ namespace Simulation.Tests
             world.AddComponent(newEntity, true);
             if (world.Count >= limit)
             {
-                return StatusCode.Success(100);
+                return StatusCode.Success(0);
             }
             else
             {

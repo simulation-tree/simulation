@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Unmanaged;
 
 namespace Simulation
@@ -6,23 +7,28 @@ namespace Simulation
     public readonly struct StatusCode : IEquatable<StatusCode>
     {
         /// <summary>
+        /// Maximum allowed value for status codes.
+        /// </summary>
+        public const byte MaxCode = 63;
+
+        /// <summary>
         /// Indicates that the program should continue running.
         /// </summary>
-        public static readonly StatusCode Continue = new(0);
+        public static readonly StatusCode Continue = new(1);
 
         /// <summary>
         /// Indicates that the program was terminated externally, and not on its own.
         /// </summary>
-        public static readonly StatusCode Termination = Failure(byte.MaxValue);
+        public static readonly StatusCode Termination = Failure(MaxCode);
 
-        private readonly ushort value;
+        private readonly byte value;
 
-        public readonly bool IsContinue => value == 0;
-        public readonly bool IsSuccess => (value & 1) == 1;
-        public readonly bool IsFailure => (value & 2) == 1;
+        public readonly bool IsContinue => (value & 1) != 0 && (value & 2) == 0;
+        public readonly bool IsSuccess => (value & 1) == 0 && (value & 2) != 0;
+        public readonly bool IsFailure => (value & 1) != 0 && (value & 2) != 0;
         public readonly byte Code => (byte)(value >> 2);
 
-        private StatusCode(ushort value)
+        private StatusCode(byte value)
         {
             this.value = value;
         }
@@ -87,13 +93,21 @@ namespace Simulation
 
         public static StatusCode Success(byte code)
         {
-            ushort value = (ushort)(code << 2 | 1);
+            ThrowIfCodeIsOutOfRange(code);
+
+            byte value = default;
+            value |= 2;
+            value |= (byte)(code << 2);
             return new StatusCode(value);
         }
 
         public static StatusCode Failure(byte code)
         {
-            ushort value = (ushort)(code << 2 | 2);
+            ThrowIfCodeIsOutOfRange(code);
+
+            byte value = default;
+            value |= 3;
+            value |= (byte)(code << 2);
             return new StatusCode(value);
         }
 
@@ -135,6 +149,15 @@ namespace Simulation
         public static implicit operator byte(StatusCode code)
         {
             return code.Code;
+        }
+
+        [Conditional("DEBUG")]
+        private static void ThrowIfCodeIsOutOfRange(byte code)
+        {
+            if (code > MaxCode)
+            {
+                throw new ArgumentOutOfRangeException(nameof(code), code, $"Status code must be between 0 and {MaxCode}");
+            }
         }
     }
 }

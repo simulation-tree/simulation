@@ -1,4 +1,6 @@
-﻿namespace Simulation.Tests
+﻿using System;
+
+namespace Simulation.Tests
 {
     public class StatusCodeTests
     {
@@ -27,13 +29,38 @@
         [Test]
         public void MaxCodes()
         {
-            StatusCode a = StatusCode.Success(byte.MaxValue);
-            Assert.That(a.Code, Is.EqualTo(byte.MaxValue));
+            StatusCode a = StatusCode.Success(StatusCode.MaxCode);
+            Assert.That(a.Code, Is.EqualTo(StatusCode.MaxCode));
             Assert.That(a.IsSuccess, Is.True);
 
-            StatusCode b = StatusCode.Failure(byte.MaxValue);
-            Assert.That(b.Code, Is.EqualTo(byte.MaxValue));
+            StatusCode b = StatusCode.Failure(StatusCode.MaxCode);
+            Assert.That(b.Code, Is.EqualTo(StatusCode.MaxCode));
             Assert.That(b.IsSuccess, Is.False);
         }
+
+        [Test]
+        public void DefaultNotTheSame()
+        {
+            StatusCode a = default;
+            StatusCode b = StatusCode.Continue;
+            StatusCode c = StatusCode.Success(0);
+            StatusCode d = StatusCode.Failure(0);
+
+            Assert.That(a, Is.Not.EqualTo(b));
+            Assert.That(a, Is.Not.EqualTo(c));
+            Assert.That(a, Is.Not.EqualTo(d));
+            Assert.That(b, Is.Not.EqualTo(c));
+            Assert.That(b, Is.Not.EqualTo(d));
+        }
+
+#if DEBUG
+        [Test]
+        public void ThrowIfOutOfRange()
+        {
+            StatusCode a = StatusCode.Success(StatusCode.MaxCode);
+            Assert.Throws<ArgumentOutOfRangeException>(() => StatusCode.Success(StatusCode.MaxCode + 1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => StatusCode.Failure(StatusCode.MaxCode + 1));
+        }
+#endif
     }
 }
