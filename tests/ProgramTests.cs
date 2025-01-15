@@ -12,7 +12,7 @@ namespace Simulation.Tests
         [CancelAfter(1000)]
         public void SimpleProgram(CancellationToken token)
         {
-            Program program = Program.Create(world, new Calculator());
+            Program program = new Program<Calculator>(world);
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
             StatusCode statusCode;
@@ -39,7 +39,7 @@ namespace Simulation.Tests
         [Test]
         public void ExitEarly()
         {
-            Program program = Program.Create(world, new Calculator());
+            Program program = new Program<Calculator>(world);
 
             Assert.That(program.State, Is.EqualTo(IsProgram.State.Uninitialized));
 
@@ -59,7 +59,7 @@ namespace Simulation.Tests
         [CancelAfter(1000)]
         public void ReRunProgram(CancellationToken token)
         {
-            Program program = Program.Create(world, new Calculator());
+            Program program = new Program<Calculator>(world);
 
             while (!program.IsFinished(out StatusCode statusCode))
             {
@@ -98,7 +98,7 @@ namespace Simulation.Tests
             Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
             SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
-                using (Program program = Program.Create(world, new DummyProgram(TimeSpan.FromSeconds(2))))
+                using (Program program = new Program<DummyProgram>(world, new(TimeSpan.FromSeconds(2))))
                 {
                     StatusCode statusCode;
                     while (!program.IsFinished(out statusCode))
@@ -132,7 +132,7 @@ namespace Simulation.Tests
             Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
             SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
-                using (Program program = Program.Create(world, new ProgramThatUpdatesSystemsOnStart()))
+                using (Program program = new Program<ProgramThatUpdatesSystemsOnStart>(world))
                 {
                     StatusCode statusCode;
                     while (!program.IsFinished(out statusCode))
