@@ -103,7 +103,7 @@ namespace Simulation
 
             //dispose systems
             List<SystemContainer> systems = value->systems;
-            while (systems.Count > 0)
+            while (systems.Count > 0) //todo: should this be a stack instead of a list?
             {
                 ref SystemContainer firstToRemove = ref systems[0];
                 firstToRemove.Dispose();
