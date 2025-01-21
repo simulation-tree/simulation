@@ -27,8 +27,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\generator\Simulation.Generator.csproj" />
-	  <ProjectReference Include="..\core\Simulation.Core.csproj" />
+		<ProjectReference Include="..\generator\Simulation.Generator.csproj" />
+		<ProjectReference Include="..\core\Simulation.Core.csproj" />
+		<ProjectReference Include="..\..\worlds\source\Worlds.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -26,6 +26,7 @@
 
 	<ItemGroup>
 		<ProjectReference Include="..\..\worlds\core\Worlds.Core.csproj" />
+		<ProjectReference Include="..\..\worlds\source\Worlds.csproj" />
 	</ItemGroup>
 
 </Project>
