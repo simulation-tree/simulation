@@ -30,7 +30,7 @@
 		<ProjectReference Include="..\..\unmanaged\source\Unmanaged.csproj" />
 		<ProjectReference Include="..\..\unmanaged\tests\Unmanaged.Tests.csproj" />
 		<ProjectReference Include="..\source\Simulation.csproj" />
-		<ProjectReference Include="..\generator\Simulation.ImplementationGenerators.csproj">
+		<ProjectReference Include="..\generator\Simulation.Generator.csproj">
 			<OutputItemType>Analyzer</OutputItemType>
 			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		</ProjectReference>
