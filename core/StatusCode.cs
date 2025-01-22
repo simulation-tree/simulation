@@ -45,19 +45,38 @@ namespace Simulation
             uint length = 0;
             if (HasSuccess(out byte code))
             {
-                length += "Finished".AsUSpan().CopyTo(destination);
+                destination[length++] = 'S';
+                destination[length++] = 'u';
+                destination[length++] = 'c';
+                destination[length++] = 'c';
+                destination[length++] = 'e';
+                destination[length++] = 's';
+                destination[length++] = 's';
                 destination[length++] = ' ';
                 length += code.ToString(destination.Slice(length));
             }
             else if (HasFailure(out code))
             {
-                length += "Failure".AsUSpan().CopyTo(destination);
+                destination[length++] = 'F';
+                destination[length++] = 'a';
+                destination[length++] = 'i';
+                destination[length++] = 'l';
+                destination[length++] = 'u';
+                destination[length++] = 'r';
+                destination[length++] = 'e';
                 destination[length++] = ' ';
                 length += code.ToString(destination.Slice(length));
             }
             else
             {
-                length += "Continue".AsUSpan().CopyTo(destination);
+                destination[length++] = 'C';
+                destination[length++] = 'o';
+                destination[length++] = 'n';
+                destination[length++] = 't';
+                destination[length++] = 'i';
+                destination[length++] = 'n';
+                destination[length++] = 'u';
+                destination[length++] = 'e';
             }
 
             return length;
