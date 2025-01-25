@@ -42,7 +42,7 @@ namespace Simulation.Tests
         {
             Schema schema = new();
             schema.Load<Simulation.SchemaBank>();
-            schema.Load<TestSchemaBank>();
+            schema.Load<Simulation.Tests.TestSchemaBank>();
             return schema;
         }
 
