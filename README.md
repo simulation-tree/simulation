@@ -1,7 +1,9 @@
 # Simulation
-Library implementing the concept of programs executing within a simulator.
+
+Library implementing programs executing within a simulator.
 
 ### Systems
+
 Systems are defined by implementing the `ISystem` interface, and contain
 functions for initializing, iterating, and finalizing the system with all
 worlds that the simulator is aware of.
@@ -40,7 +42,7 @@ public readonly partial struct ExampleSystem : ISystem
 }
 ```
 > A simulator may iterate over a system with multiple worlds, so the `systemContainer.World == world` check is necessary
-for making a branch of code that only runs once on start and finish.
+for making a branch of code that only runs once on start and finish
 
 Their default constructor is never called, so if the system type contains fields that need initialization,
 it should be done in the `Start` function:
@@ -82,6 +84,7 @@ public readonly partial struct AnotherSystem : ISystem
 ```
 
 ### Simulators
+
 Simulators are objects that contain and update systems as well as programs found
 within the simulator's world:
 ```cs
@@ -95,9 +98,10 @@ using (World world = new())
     }
 }
 ```
-> Removing a system isn't necessary, its just shown here for completeness sake.
+> Removing a system isn't necessary, its just shown here for completeness
 
 ### Programs
+
 Program entities are defined by implementing the `IProgram` interface, and
 expose functions that are called by the simulator to start, update, and finish.
 
@@ -169,3 +173,7 @@ And so their default constructors *can* be used from there, as shown in the exam
 Normally if a program is finished, the status code in the `Finish` function will be the same as
 the one returned by the `Update` function. But in the case that the program is disposed before
 it finishes, the status code will be `StatusCode.Termination`.
+
+### Update order
+
+For all operations, systems are iterated upon first, then programs.
