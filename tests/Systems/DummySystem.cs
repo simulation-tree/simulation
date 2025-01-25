@@ -1,6 +1,5 @@
 ﻿using Collections;
 using System;
-using Unmanaged;
 using Worlds;
 
 namespace Simulation.Tests
@@ -18,11 +17,11 @@ namespace Simulation.Tests
             this.finishedWorlds = finishedWorlds;
         }
 
-        void ISystem.Start(in SystemContainer systemContainer, in World world)
+        unsafe void ISystem.Start(in SystemContainer systemContainer, in World world)
         {
             if (systemContainer.World == world)
             {
-                uint stride = TypeInfo<List<SystemContainer>>.size;
+                uint stride = (uint)sizeof(List<SystemContainer>);
                 List<SystemContainer> startedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 0);
                 List<SystemContainer> updatedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 1);
                 List<SystemContainer> finishedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 2);

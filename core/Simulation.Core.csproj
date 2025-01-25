@@ -15,6 +15,8 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageTags>ecs</PackageTags>
 		<Title>Simulation Core</Title>
+		<AssemblyName>Simulation</AssemblyName>
+		<RootNamespace>Simulation</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -27,6 +29,14 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\worlds\core\Worlds.Core.csproj" />
 		<ProjectReference Include="..\..\worlds\source\Worlds.csproj" />
+		<ProjectReference Include="..\..\types\generator\Types.Generator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+		<ProjectReference Include="..\..\worlds\generator\Worlds.Generator.csproj">
+			<OutputItemType>Analyzer</OutputItemType>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
 	</ItemGroup>
 
 </Project>

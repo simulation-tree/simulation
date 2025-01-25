@@ -98,7 +98,7 @@ namespace Simulation
         }
     }
 
-    public readonly struct Program<T> : IProgramEntity where T : unmanaged, IProgram
+    public unsafe readonly struct Program<T> : IProgramEntity where T : unmanaged, IProgram
     {
         private readonly Program program;
 
@@ -122,12 +122,12 @@ namespace Simulation
 
         public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, Allocation allocation)
         {
-            program = new(world, start, update, finish, (ushort)TypeInfo<T>.size, allocation);
+            program = new(world, start, update, finish, (ushort)sizeof(T), allocation);
         }
 
         public Program(World world, T program)
         {
-            ushort typeSize = (ushort)TypeInfo<T>.size;
+            ushort typeSize = (ushort)sizeof(T);
             (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
             Allocation allocation = Allocation.Create(program);
             this.program = new(world, start, update, finish, typeSize, allocation);
@@ -136,7 +136,7 @@ namespace Simulation
         public Program(World world)
         {
             T program = new();
-            ushort typeSize = (ushort)TypeInfo<T>.size;
+            ushort typeSize = (ushort)sizeof(T);
             (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
             Allocation allocation = Allocation.Create(program);
             this.program = new(world, start, update, finish, typeSize, allocation);

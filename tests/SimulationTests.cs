@@ -1,9 +1,7 @@
-﻿using Simulation.Components;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Types;
-using Unmanaged;
 using Unmanaged.Tests;
 using Worlds;
 
@@ -16,14 +14,8 @@ namespace Simulation.Tests
 
         static SimulationTests()
         {
-            TypeLayout.Register<IsProgram>();
-            TypeLayout.Register<bool>();
-            TypeLayout.Register<FixedString>();
-            TypeLayout.Register<uint>();
-            TypeLayout.Register<float>();
-            TypeLayout.Register<ulong>();
-            TypeLayout.Register<byte>();
-            TypeLayout.Register<int>();
+            TypeRegistry.Load<Simulation.TypeBank>();
+            TypeRegistry.Load<Simulation.Tests.TypeBank>();
         }
 
         protected override void SetUp()
@@ -46,17 +38,17 @@ namespace Simulation.Tests
             await Task.Delay(delta, cancellation).ConfigureAwait(false);
         }
 
-        protected static World CreateWorld()
+        protected virtual Schema CreateSchema()
         {
-            World world = new();
-            world.Schema.RegisterComponent<IsProgram>();
-            world.Schema.RegisterComponent<bool>();
-            world.Schema.RegisterComponent<FixedString>();
-            world.Schema.RegisterComponent<uint>();
-            world.Schema.RegisterComponent<float>();
-            world.Schema.RegisterComponent<ulong>();
-            world.Schema.RegisterComponent<byte>();
-            world.Schema.RegisterComponent<int>();
+            Schema schema = new();
+            schema.Load<Simulation.SchemaBank>();
+            schema.Load<TestSchemaBank>();
+            return schema;
+        }
+
+        protected World CreateWorld()
+        {
+            World world = new(CreateSchema());
             return world;
         }
     }
