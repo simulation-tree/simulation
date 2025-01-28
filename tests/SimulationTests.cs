@@ -14,8 +14,8 @@ namespace Simulation.Tests
 
         static SimulationTests()
         {
-            TypeRegistry.Load<Simulation.Core.TypeBank>();
-            TypeRegistry.Load<Simulation.Tests.TypeBank>();
+            TypeRegistry.Load<SimulationTypeBank>();
+            TypeRegistry.Load<SimulationTestsTypeBank>();
         }
 
         protected override void SetUp()
@@ -41,8 +41,8 @@ namespace Simulation.Tests
         protected virtual Schema CreateSchema()
         {
             Schema schema = new();
-            schema.Load<Simulation.Core.SchemaBank>();
-            schema.Load<Simulation.Tests.TestSchemaBank>();
+            schema.Load<SimulationSchemaBank>();
+            schema.Load<TestSchemaBank>();
             return schema;
         }
 
