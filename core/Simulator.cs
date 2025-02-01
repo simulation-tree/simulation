@@ -166,7 +166,7 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Submits a message for a potential system to handle.
+        /// Submits a <paramref name="message"/> for a potential system to handle.
         /// </summary>
         /// <returns><c>true</c> if it was handled.</returns>
         public readonly bool TryHandleMessage<T>(T message) where T : unmanaged
@@ -189,6 +189,34 @@ namespace Simulation
 
             //tell program worlds
             handled |= TryHandleMessagesWithPrograms(messageType, messageContainer);
+            return handled;
+        }
+        
+        /// <summary>
+        /// Submits a <paramref name="message"/> for a potential system to handle.
+        /// </summary>
+        /// <returns><c>true</c> if it was handled.</returns>
+        public readonly bool TryHandleMessage<T>(ref T message) where T : unmanaged
+        {
+            InitializeSystemsNotStarted();
+            InitializeEachProgram();
+
+            using Allocation messageContainer = Allocation.Create(message);
+            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            USpan<SystemContainer> systems = Systems;
+            bool handled = false;
+
+            //tell host world
+            World hostWorld = World;
+            for (uint i = 0; i < systems.Length; i++)
+            {
+                ref SystemContainer system = ref systems[i];
+                handled |= system.TryHandleMessage(hostWorld, messageType, messageContainer);
+            }
+
+            //tell program worlds
+            handled |= TryHandleMessagesWithPrograms(messageType, messageContainer);
+            message = messageContainer.Read<T>();
             return handled;
         }
 
@@ -660,7 +688,7 @@ namespace Simulation
                 Allocation allocation = Allocation.Create(staticTemplate);
 
                 //add message handlers
-                USpan<MessageHandler> buffer = stackalloc MessageHandler[32];
+                USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
                 uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
                 Dictionary<nint, HandleMessage> handlers;
                 if (messageHandlerCount > 0)

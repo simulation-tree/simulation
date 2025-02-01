@@ -10,19 +10,19 @@ namespace Simulation.Functions
     public unsafe readonly struct HandleMessage : IEquatable<HandleMessage>
     {
 #if NET
-        private readonly delegate* unmanaged<SystemContainer, World, Allocation, void> value;
+        private readonly delegate* unmanaged<SystemContainer, World, Allocation, Boolean> value;
 
         /// <summary>
         /// Creates a new <see cref="HandleMessage"/> instance.
         /// </summary>
-        public HandleMessage(delegate* unmanaged<SystemContainer, World, Allocation, void> value)
+        public HandleMessage(delegate* unmanaged<SystemContainer, World, Allocation, Boolean> value)
         {
             this.value = value;
         }
 #else
-        private readonly delegate*<SystemContainer, World, Allocation, void> value;
+        private readonly delegate*<SystemContainer, World, Allocation, Boolean> value;
 
-        public HandleFunction(delegate*<SystemContainer, World, Allocation, void> value)
+        public HandleFunction(delegate*<SystemContainer, World, Allocation, Boolean> value)
         {
             this.value = value;
         }
@@ -30,9 +30,9 @@ namespace Simulation.Functions
         /// <summary>
         /// Invokes the function.
         /// </summary>
-        public readonly void Invoke(SystemContainer container, World programWorld, Allocation message)
+        public readonly bool Invoke(SystemContainer container, World programWorld, Allocation message)
         {
-            value(container, programWorld, message);
+            return value(container, programWorld, message);
         }
 
         /// <inheritdoc/>
@@ -63,6 +63,26 @@ namespace Simulation.Functions
         public static bool operator !=(HandleMessage left, HandleMessage right)
         {
             return !(left == right);
+        }
+
+        public readonly struct Boolean
+        {
+            private readonly byte value;
+
+            public Boolean(bool value)
+            {
+                this.value = value ? (byte)1 : (byte)0;
+            }
+
+            public static implicit operator bool(Boolean value)
+            {
+                return value.value == 1;
+            }
+
+            public static implicit operator Boolean(bool value)
+            {
+                return new Boolean(value);
+            }
         }
     }
 }

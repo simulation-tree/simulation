@@ -178,26 +178,61 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Attempts to handle the given message with the given type.
+        /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
         public readonly bool TryHandleMessage(World programWorld, nint messageType, Allocation message)
         {
             if (handlers.TryGetValue(messageType, out HandleMessage handler))
             {
-                handler.Invoke(this, programWorld, message);
-                return true;
+                return handler.Invoke(this, programWorld, message);
             }
 
             return false;
         }
 
         /// <summary>
-        /// Attempts to handle the given message with the given type.
+        /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
         public readonly bool TryHandleMessage<T>(World programWorld, Allocation message) where T : unmanaged
         {
             nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
             return TryHandleMessage(programWorld, messageType, message);
+        }
+
+        /// <summary>
+        /// Tries to handle the given <paramref name="message"/>.
+        /// </summary>
+        public readonly bool TryHandleMessage<T>(World programWorld, ref T message) where T : unmanaged
+        {
+            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            using Allocation allocation = Allocation.Create(message);
+            if (TryHandleMessage(programWorld, messageType, allocation))
+            {
+                message = allocation.Read<T>();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Tries to handle the given <paramref name="message"/>.
+        /// </summary>
+        public readonly bool TryHandleMessage<T>(World programWorld, T message) where T : unmanaged
+        {
+            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            using Allocation allocation = Allocation.Create(message);
+            if (TryHandleMessage(programWorld, messageType, allocation))
+            {
+                message = allocation.Read<T>();
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         /// <summary>
