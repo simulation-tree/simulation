@@ -11,22 +11,17 @@ namespace Simulation
     /// An entity that represents a program running in a <see cref="World"/>,
     /// operated by a <see cref="Simulator"/>.
     /// </summary>
-    public readonly struct Program : IProgramEntity
+    public readonly partial struct Program : IProgramEntity
     {
-        private readonly Entity entity;
-
         /// <summary>
         /// State of the program.
         /// </summary>
-        public readonly ref IsProgram.State State => ref entity.GetComponent<IsProgram>().state;
+        public readonly ref IsProgram.State State => ref GetComponent<IsProgram>().state;
 
         /// <summary>
         /// The world that belongs to this program.
         /// </summary>
-        public readonly World ProgramWorld => entity.GetComponent<IsProgram>().world;
-
-        readonly uint IEntity.Value => entity.GetEntityValue();
-        readonly World IEntity.World => entity.GetWorld();
+        public readonly World ProgramWorld => GetComponent<IsProgram>().world;
 
         readonly void IEntity.Describe(ref Archetype archetype)
         {
@@ -40,16 +35,8 @@ namespace Simulation
         {
             World programWorld = new();
             programWorld.Schema.CopyFrom(hostWorld.Schema);
-            entity = new(hostWorld);
-            entity.AddComponent(new IsProgram(start, update, finish, typeSize, allocation, programWorld));
-        }
-
-        /// <summary>
-        /// Destroys the program.
-        /// </summary>
-        public readonly void Dispose()
-        {
-            entity.Dispose();
+            this.world = hostWorld;
+            value = world.CreateEntity(new IsProgram(start, update, finish, typeSize, allocation, programWorld));
         }
 
         /// <summary>
@@ -59,7 +46,7 @@ namespace Simulation
         {
             ThrowIfNotInitialized();
 
-            ref IsProgram program = ref entity.GetComponent<IsProgram>();
+            ref IsProgram program = ref GetComponent<IsProgram>();
             return ref program.allocation.Read<T>();
         }
 
@@ -73,7 +60,7 @@ namespace Simulation
         {
             if (State == IsProgram.State.Uninitialized)
             {
-                throw new InvalidOperationException($"Program `{entity}` is not yet initialized");
+                throw new InvalidOperationException($"Program `{value}` is not yet initialized");
             }
         }
 
@@ -91,11 +78,6 @@ namespace Simulation
             Allocation allocation = Allocation.Create(program);
             return new(world, start, update, finish, allocation);
         }
-
-        public static implicit operator Entity(Program program)
-        {
-            return program.entity;
-        }
     }
 
     public unsafe readonly struct Program<T> : IProgramEntity where T : unmanaged, IProgram
@@ -111,9 +93,6 @@ namespace Simulation
         /// The value that represents this program type.
         /// </summary>
         public readonly ref T Value => ref program.Read<T>();
-
-        readonly uint IEntity.Value => program.GetEntityValue();
-        readonly World IEntity.World => program.GetWorld();
 
         readonly void IEntity.Describe(ref Archetype archetype)
         {
