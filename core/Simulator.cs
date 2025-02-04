@@ -191,7 +191,7 @@ namespace Simulation
             handled |= TryHandleMessagesWithPrograms(messageType, messageContainer);
             return handled;
         }
-        
+
         /// <summary>
         /// Submits a <paramref name="message"/> for a potential system to handle.
         /// </summary>
@@ -599,9 +599,12 @@ namespace Simulation
             /// </summary>
             public static Implementation* Allocate(World world)
             {
-                Implementation* simulator = Allocations.Allocate<Implementation>();
-                *simulator = new(world);
-                return simulator;
+                ref Implementation simulator = ref Allocations.Allocate<Implementation>();
+                simulator = new(world);
+                fixed (Implementation* pointer = &simulator)
+                {
+                    return pointer;
+                }
             }
 
             /// <summary>
