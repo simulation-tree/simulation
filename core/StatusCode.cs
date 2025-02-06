@@ -28,6 +28,14 @@ namespace Simulation
         public readonly bool IsFailure => (value & 1) != 0 && (value & 2) != 0;
         public readonly byte Code => (byte)(value >> 2);
 
+#if NET
+        [Obsolete("Default constructor not supported", true)]
+        public StatusCode()
+        {
+            throw new NotSupportedException();
+        }
+#endif
+
         private StatusCode(byte value)
         {
             this.value = value;

@@ -131,14 +131,21 @@ namespace Simulation
         private readonly void FinishAllPrograms(StatusCode statusCode)
         {
             World hostWorld = World;
-            ComponentQuery<IsProgram> query = new(hostWorld);
-            foreach (var r in query)
+            ComponentType programComponent = value->programComponent;
+            foreach (Chunk chunk in hostWorld.Chunks)
             {
-                ref IsProgram program = ref r.component1;
-                if (program.state != IsProgram.State.Finished)
+                if (chunk.Definition.Contains(programComponent))
                 {
-                    program.state = IsProgram.State.Finished;
-                    program.finish.Invoke(this, program.allocation, program.world, statusCode);
+                    USpan<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
+                    for (uint i = 0; i < programs.Length; i++)
+                    {
+                        ref IsProgram program = ref programs[i];
+                        if (program.state != IsProgram.State.Finished)
+                        {
+                            program.state = IsProgram.State.Finished;
+                            program.finish.Invoke(this, program.allocation, program.world, statusCode);
+                        }
+                    }
                 }
             }
         }
@@ -223,19 +230,26 @@ namespace Simulation
         private readonly bool TryHandleMessagesWithPrograms(nint messageType, Allocation messageContainer)
         {
             World hostWorld = World;
-            ComponentQuery<IsProgram> query = new(hostWorld);
             USpan<SystemContainer> systems = Systems;
+            ComponentType programComponent = value->programComponent;
             bool handled = false;
-            foreach (var r in query)
+            foreach (Chunk chunk in hostWorld.Chunks)
             {
-                ref IsProgram program = ref r.component1;
-                if (program.state == IsProgram.State.Active)
+                if (chunk.Definition.Contains(programComponent))
                 {
-                    World programWorld = program.world;
-                    for (uint i = 0; i < systems.Length; i++)
+                    USpan<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
+                    for (uint i = 0; i < programs.Length; i++)
                     {
-                        ref SystemContainer system = ref systems[i];
-                        handled |= system.TryHandleMessage(programWorld, messageType, messageContainer);
+                        ref IsProgram program = ref programs[i];
+                        if (program.state == IsProgram.State.Active)
+                        {
+                            World programWorld = program.world;
+                            for (uint s = 0; s < systems.Length; s++)
+                            {
+                                ref SystemContainer system = ref systems[s];
+                                handled |= system.TryHandleMessage(programWorld, messageType, messageContainer);
+                            }
+                        }
                     }
                 }
             }
@@ -285,24 +299,33 @@ namespace Simulation
         private readonly void InitializeEachProgram()
         {
             World hostWorld = World;
-            ComponentQuery<IsProgram> query = new(hostWorld);
             Dictionary<uint, ProgramContainer> programs = Programs;
-            foreach (var r in query)
+            ComponentType programComponent = value->programComponent;
+            foreach (Chunk chunk in hostWorld.Chunks)
             {
-                ref IsProgram program = ref r.component1;
-                if (program.state == IsProgram.State.Uninitialized)
+                if (chunk.Definition.Contains(programComponent))
                 {
-                    program.state = IsProgram.State.Active;
-                    if (programs.TryGetValue(r.entity, out ProgramContainer container))
+                    USpan<uint> entities = chunk.Entities;
+                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (uint i = 0; i < components.Length; i++)
                     {
-                        program.world.Clear();
-                        program.start.Invoke(this, program.allocation, program.world);
-                        container.didFinish = false;
-                    }
-                    else
-                    {
-                        program.start.Invoke(this, program.allocation, program.world);
-                        programs.Add(r.entity, new(r.entity, program, program.world, program.allocation));
+                        ref IsProgram program = ref components[i];
+                        if (program.state == IsProgram.State.Uninitialized)
+                        {
+                            uint entity = entities[i];
+                            program.state = IsProgram.State.Active;
+                            if (programs.TryGetValue(entity, out ProgramContainer container))
+                            {
+                                program.world.Clear();
+                                program.start.Invoke(this, program.allocation, program.world);
+                                container.didFinish = false;
+                            }
+                            else
+                            {
+                                program.start.Invoke(this, program.allocation, program.world);
+                                programs.Add(entity, new(entity, program, program.world, program.allocation));
+                            }
+                        }
                     }
                 }
             }
@@ -311,21 +334,30 @@ namespace Simulation
         private readonly void UpdateEachProgram(TimeSpan delta)
         {
             World hostWorld = World;
-            ComponentQuery<IsProgram> query = new(hostWorld);
             Dictionary<uint, ProgramContainer> programs = Programs;
-            foreach (var r in query)
+            ComponentType programComponent = value->programComponent;
+            foreach (Chunk chunk in hostWorld.Chunks)
             {
-                ref IsProgram program = ref r.component1;
-                if (program.state == IsProgram.State.Active)
+                if (chunk.Definition.Contains(programComponent))
                 {
-                    program.statusCode = program.update.Invoke(this, program.allocation, program.world, delta);
-                    if (program.statusCode != StatusCode.Continue)
+                    USpan<uint> entities = chunk.Entities;
+                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (uint i = 0; i < components.Length; i++)
                     {
-                        program.state = IsProgram.State.Finished;
-                        program.finish.Invoke(this, program.allocation, program.world, program.statusCode);
-
-                        ref ProgramContainer container = ref programs[r.entity];
-                        container.didFinish = true;
+                        ref IsProgram program = ref components[i];
+                        if (program.state == IsProgram.State.Active)
+                        {
+                            program.statusCode = program.update.Invoke(this, program.allocation, program.world, delta);
+                            if (program.statusCode != StatusCode.Continue)
+                            {
+                                program.state = IsProgram.State.Finished;
+                                program.finish.Invoke(this, program.allocation, program.world, program.statusCode);
+                                
+                                uint entity = entities[i];
+                                ref ProgramContainer container = ref programs[entity];
+                                container.didFinish = true;
+                            }
+                        }
                     }
                 }
             }
@@ -369,17 +401,24 @@ namespace Simulation
         {
             World hostWorld = World;
             USpan<SystemContainer> systems = Systems;
-            ComponentQuery<IsProgram> query = new(hostWorld);
-            foreach (var r in query)
+            ComponentType programComponent = value->programComponent;
+            foreach (Chunk chunk in hostWorld.Chunks)
             {
-                ref IsProgram program = ref r.component1;
-                if (program.state == IsProgram.State.Active)
+                if (chunk.Definition.Contains(programComponent))
                 {
-                    World programWorld = program.world;
-                    for (uint s = 0; s < systems.Length; s++)
+                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (uint i = 0; i < components.Length; i++)
                     {
-                        ref SystemContainer container = ref systems[s];
-                        container.Update(programWorld, delta);
+                        ref IsProgram program = ref components[i];
+                        if (program.state == IsProgram.State.Active)
+                        {
+                            World programWorld = program.world;
+                            for (uint s = 0; s < systems.Length; s++)
+                            {
+                                ref SystemContainer container = ref systems[s];
+                                container.Update(programWorld, delta);
+                            }
+                        }
                     }
                 }
             }
@@ -404,20 +443,27 @@ namespace Simulation
         private readonly void InitializeSystemsWithProgramWorlds()
         {
             World hostWorld = World;
-            ComponentQuery<IsProgram> query = new(hostWorld);
             USpan<SystemContainer> systems = Systems;
-            foreach (var r in query)
+            ComponentType programComponent = value->programComponent;
+            foreach (Chunk chunk in hostWorld.Chunks)
             {
-                ref IsProgram program = ref r.component1;
-                if (program.state != IsProgram.State.Finished)
+                if (chunk.Definition.Contains(programComponent))
                 {
-                    World programWorld = program.world;
-                    for (uint s = 0; s < systems.Length; s++)
+                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (uint i = 0; i < components.Length; i++)
                     {
-                        ref SystemContainer container = ref systems[s];
-                        if (!container.IsInitializedWith(programWorld))
+                        ref IsProgram program = ref components[i];
+                        if (program.state != IsProgram.State.Finished)
                         {
-                            container.Start(programWorld);
+                            World programWorld = program.world;
+                            for (uint s = 0; s < systems.Length; s++)
+                            {
+                                ref SystemContainer container = ref systems[s];
+                                if (!container.IsInitializedWith(programWorld))
+                                {
+                                    container.Start(programWorld);
+                                }
+                            }
                         }
                     }
                 }
@@ -582,6 +628,7 @@ namespace Simulation
         public struct Implementation
         {
             public DateTime lastUpdateTime;
+            public readonly ComponentType programComponent;
             public readonly World world;
             public readonly List<SystemContainer> systems;
             public readonly Dictionary<uint, ProgramContainer> programs;
@@ -589,6 +636,7 @@ namespace Simulation
             private Implementation(World world)
             {
                 this.world = world;
+                programComponent = world.Schema.GetComponent<IsProgram>();
                 lastUpdateTime = DateTime.MinValue;
                 systems = new(4);
                 programs = new(4);
