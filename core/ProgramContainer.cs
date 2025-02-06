@@ -49,6 +49,7 @@ namespace Simulation
         /// </summary>
         public ProgramContainer(uint entity, IsProgram component, World world, Allocation allocation)
         {
+            didFinish = false;
             this.entity = entity;
             start = component.start;
             finish = component.finish;

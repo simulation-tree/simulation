@@ -23,6 +23,11 @@ namespace Simulation
         /// </summary>
         public readonly World ProgramWorld => GetComponent<IsProgram>().world;
 
+        /// <summary>
+        /// Retrieves the allocation that contains the program value.
+        /// </summary>
+        public readonly Allocation Allocation => GetComponent<IsProgram>().allocation;
+
         readonly void IEntity.Describe(ref Archetype archetype)
         {
             archetype.AddComponentType<IsProgram>();
@@ -33,7 +38,7 @@ namespace Simulation
         /// </summary>
         public Program(World hostWorld, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation)
         {
-            World programWorld = new();
+            World programWorld = World.Create();
             programWorld.Schema.CopyFrom(hostWorld.Schema);
             this.world = hostWorld;
             value = world.CreateEntity(new IsProgram(start, update, finish, typeSize, allocation, programWorld));
@@ -65,7 +70,8 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Creates a new program in the given <see cref="World"/>.
+        /// Creates a new program in the given <see cref="World"/>
+        /// initialized with the given <paramref name="program"/>.
         /// </summary>
         public static Program<T> Create<T>(World world, T program) where T : unmanaged, IProgram
         {
@@ -77,6 +83,14 @@ namespace Simulation
 
             Allocation allocation = Allocation.Create(program);
             return new(world, start, update, finish, allocation);
+        }
+
+        /// <summary>
+        /// Creates a new uninitialized program in the given <see cref="World"/>.
+        /// </summary>
+        public static Program<T> Create<T>(World world) where T : unmanaged, IProgram
+        {
+            return Create<T>(world, default);
         }
     }
 

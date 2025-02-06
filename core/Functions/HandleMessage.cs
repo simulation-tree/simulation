@@ -22,7 +22,7 @@ namespace Simulation.Functions
 #else
         private readonly delegate*<SystemContainer, World, Allocation, Boolean> value;
 
-        public HandleFunction(delegate*<SystemContainer, World, Allocation, Boolean> value)
+        public HandleMessage(delegate*<SystemContainer, World, Allocation, Boolean> value)
         {
             this.value = value;
         }

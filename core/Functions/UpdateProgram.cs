@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Unmanaged;
 using Worlds;
 
@@ -20,9 +21,9 @@ namespace Simulation.Functions
             this.function = function;
         }
 #else
-        private readonly delegate*<Simulator, Allocation, World, TimeSpan, ReturnCode> function;
+        private readonly delegate*<Simulator, Allocation, World, TimeSpan, StatusCode> function;
 
-        public UpdateProgramFunction(delegate*<Simulator, Allocation, World, TimeSpan, ReturnCode> function)
+        public UpdateProgram(delegate*<Simulator, Allocation, World, TimeSpan, StatusCode> function)
         {
             this.function = function;
         }
@@ -33,6 +34,8 @@ namespace Simulation.Functions
         /// </summary>
         public readonly StatusCode Invoke(Simulator simulator, Allocation allocation, World world, TimeSpan delta)
         {
+            ThrowIfDefault();
+
             return function(simulator, allocation, world, delta);
         }
 
@@ -54,6 +57,15 @@ namespace Simulation.Functions
         public readonly override int GetHashCode()
         {
             return ((nint)function).GetHashCode();
+        }
+
+        [Conditional("DEBUG")]
+        private readonly void ThrowIfDefault()
+        {
+            if (function == default)
+            {
+                throw new InvalidOperationException("Update program function is not initialized");
+            }
         }
 
         /// <inheritdoc/>

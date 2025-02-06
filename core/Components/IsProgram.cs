@@ -52,6 +52,7 @@ namespace Simulation.Components
         /// </summary>
         public IsProgram(StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation, World world)
         {
+            statusCode = default;
             this.start = start;
             this.update = update;
             this.finish = finish;

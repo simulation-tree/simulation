@@ -22,7 +22,7 @@ namespace Simulation.Functions
 #else
         private readonly delegate*<SystemContainer, World, void> value;
 
-        public InitializeFunction(delegate*<SystemContainer, World, void> value)
+        public StartSystem(delegate*<SystemContainer, World, void> value)
         {
             this.value = value;
         }

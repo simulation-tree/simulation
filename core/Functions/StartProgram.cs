@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using Unmanaged;
 using Worlds;
 
@@ -22,7 +23,7 @@ namespace Simulation.Functions
 #else
         private readonly delegate*<Simulator, Allocation, World, void> function;
 
-        public StartProgramFunction(delegate*<Simulator, Allocation, World, void> function)
+        public StartProgram(delegate*<Simulator, Allocation, World, void> function)
         {
             this.function = function;
         }
@@ -32,6 +33,8 @@ namespace Simulation.Functions
         /// </summary>
         public readonly void Invoke(Simulator simulator, Allocation allocation, World world)
         {
+            ThrowIfDefault();
+
             function(simulator, allocation, world);
         }
 
@@ -53,6 +56,15 @@ namespace Simulation.Functions
         public readonly override int GetHashCode()
         {
             return ((nint)function).GetHashCode();
+        }
+
+        [Conditional("DEBUG")]
+        private readonly void ThrowIfDefault()
+        {
+            if (function == default)
+            {
+                throw new InvalidOperationException("Start program function is not initialized");
+            }
         }
 
         /// <inheritdoc/>

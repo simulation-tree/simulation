@@ -579,7 +579,7 @@ namespace Simulation
         /// <summary>
         /// Opaque pointer implementation of a <see cref="Simulator"/>.
         /// </summary>
-        public unsafe struct Implementation
+        public struct Implementation
         {
             public DateTime lastUpdateTime;
             public readonly World world;
@@ -590,8 +590,8 @@ namespace Simulation
             {
                 this.world = world;
                 lastUpdateTime = DateTime.MinValue;
-                systems = new();
-                programs = new();
+                systems = new(4);
+                programs = new(4);
             }
 
             /// <summary>
@@ -599,6 +599,8 @@ namespace Simulation
             /// </summary>
             public static Implementation* Allocate(World world)
             {
+                Allocations.ThrowIfNull(world.Pointer, "Attempting to create a simulator without a world");
+
                 ref Implementation simulator = ref Allocations.Allocate<Implementation>();
                 simulator = new(world);
                 fixed (Implementation* pointer = &simulator)
