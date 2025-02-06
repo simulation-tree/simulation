@@ -175,7 +175,7 @@ namespace Simulation
             InitializeEachProgram();
 
             using Allocation messageContainer = Allocation.Create(message);
-            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
             bool handled = false;
 
@@ -202,7 +202,7 @@ namespace Simulation
             InitializeEachProgram();
 
             using Allocation messageContainer = Allocation.Create(message);
-            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
             bool handled = false;
 
@@ -446,7 +446,7 @@ namespace Simulation
 
         public readonly SystemContainer<T> AddSystemBefore<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(O).TypeHandle);
+            nint systemType = RuntimeTypeTable.GetAddress<O>();
             USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
@@ -463,7 +463,7 @@ namespace Simulation
 
         public readonly SystemContainer<T> AddSystemAfter<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(O).TypeHandle);
+            nint systemType = RuntimeTypeTable.GetAddress<O>();
             USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
@@ -493,7 +493,7 @@ namespace Simulation
         /// </summary>
         public readonly bool ContainsSystem<T>() where T : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
@@ -516,7 +516,7 @@ namespace Simulation
         /// <exception cref="NullReferenceException"></exception>
         public readonly SystemContainer<T> GetSystem<T>() where T : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
@@ -537,7 +537,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfSystemIsMissing<T>() where T : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
             for (uint i = 0; i < systems.Length; i++)
             {
@@ -685,7 +685,7 @@ namespace Simulation
                 }
 
                 World hostWorld = GetWorld(simulator);
-                RuntimeTypeHandle systemType = typeof(T).TypeHandle;
+                RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
                 Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
                 Allocation allocation = Allocation.Create(staticTemplate);
@@ -713,7 +713,7 @@ namespace Simulation
                     handlers = new(1);
                 }
 
-                SystemContainer container = new(new(simulator), allocation, input, RuntimeTypeHandle.ToIntPtr(systemType), handlers, start, update, finish);
+                SystemContainer container = new(new(simulator), allocation, input, RuntimeTypeTable.GetAddress(systemType), handlers, start, update, finish);
                 simulator->systems.Insert(index, container);
                 SystemContainer<T> genericContainer = new(new(simulator), index, container.systemType);
                 container.Start(hostWorld);
@@ -728,7 +728,7 @@ namespace Simulation
                 Allocations.ThrowIfNull(simulator);
 
                 World world = GetWorld(simulator);
-                nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+                nint systemType = RuntimeTypeTable.GetAddress<T>();
                 Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
 
                 for (uint i = 0; i < simulator->systems.Count; i++)

@@ -42,7 +42,7 @@ namespace Simulation
         {
             get
             {
-                RuntimeTypeHandle handle = RuntimeTypeHandle.FromIntPtr(systemType);
+                RuntimeTypeHandle handle = RuntimeTypeTable.GetHandle(systemType);
                 return Type.GetTypeFromHandle(handle) ?? throw new();
             }
         }
@@ -195,7 +195,7 @@ namespace Simulation
         /// </summary>
         public readonly bool TryHandleMessage<T>(World programWorld, Allocation message) where T : unmanaged
         {
-            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint messageType = RuntimeTypeTable.GetAddress<T>();
             return TryHandleMessage(programWorld, messageType, message);
         }
 
@@ -204,7 +204,7 @@ namespace Simulation
         /// </summary>
         public readonly bool TryHandleMessage<T>(World programWorld, ref T message) where T : unmanaged
         {
-            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint messageType = RuntimeTypeTable.GetAddress<T>();
             using Allocation allocation = Allocation.Create(message);
             if (TryHandleMessage(programWorld, messageType, allocation))
             {
@@ -222,7 +222,7 @@ namespace Simulation
         /// </summary>
         public readonly bool TryHandleMessage<T>(World programWorld, T message) where T : unmanaged
         {
-            nint messageType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint messageType = RuntimeTypeTable.GetAddress<T>();
             using Allocation allocation = Allocation.Create(message);
             if (TryHandleMessage(programWorld, messageType, allocation))
             {
@@ -260,7 +260,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfNotSameType<T>() where T : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle);
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
             if (this.systemType != systemType)
             {
                 throw new InvalidOperationException($"System `{this}` is not of type `{typeof(T)}`");

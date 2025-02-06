@@ -26,7 +26,7 @@ namespace Simulation
         {
             get
             {
-                RuntimeTypeHandle handle = RuntimeTypeHandle.FromIntPtr(messageType);
+                RuntimeTypeHandle handle = RuntimeTypeTable.GetHandle(messageType);
                 return Type.GetTypeFromHandle(handle) ?? throw new();
             }
         }
@@ -85,7 +85,8 @@ namespace Simulation
         /// </summary>
         public static MessageHandler Create<T>(HandleMessage function) where T : unmanaged
         {
-            return new(RuntimeTypeHandle.ToIntPtr(typeof(T).TypeHandle), function);
+            nint messageAddress = RuntimeTypeTable.GetAddress<T>();
+            return new(messageAddress, function);
         }
 
         /// <inheritdoc/>
