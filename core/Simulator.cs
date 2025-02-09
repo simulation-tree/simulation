@@ -18,7 +18,7 @@ namespace Simulation
         /// <summary>
         /// The world that this simulator was created for.
         /// </summary>
-        public readonly World World => Implementation.GetWorld(value);
+        public readonly World World => value->world;
 
         /// <summary>
         /// Checks if this simulator is disposed.
@@ -31,29 +31,14 @@ namespace Simulation
         public readonly nint Address => (nint)value;
 
         /// <summary>
-        /// All known programs that have ever been initialized.
+        /// All added programs.
         /// </summary>
-        public readonly Dictionary<uint, ProgramContainer> Programs => Implementation.GetPrograms(value);
+        public readonly USpan<ProgramContainer> Programs => value->programs.AsSpan();
 
         /// <summary>
         /// All added systems.
         /// </summary>
-        public readonly USpan<SystemContainer> Systems => Implementation.GetSystems(value).AsSpan();
-
-        /// <summary>
-        /// All <see cref="Worlds.World"/> instances that belong exclusively to programs.
-        /// </summary>
-        public readonly System.Collections.Generic.IEnumerable<World> ProgramWorlds
-        {
-            get
-            {
-                Dictionary<uint, ProgramContainer> programs = Programs;
-                foreach (uint key in programs.Keys)
-                {
-                    yield return programs[key].world;
-                }
-            }
-        }
+        public readonly USpan<SystemContainer> Systems => value->systems.AsSpan();
 
 #if NET
         /// <summary>
@@ -111,17 +96,8 @@ namespace Simulation
             }
 
             //dispose programs
-            Dictionary<uint, ProgramContainer> programs = Programs;
-            USpan<uint> programKeys = stackalloc uint[(int)programs.Count];
-            uint programCount = 0;
-            foreach (uint key in programs.Keys)
+            foreach (ProgramContainer container in value->programs)
             {
-                programKeys[programCount++] = key;
-            }
-
-            for (uint i = programCount - 1; i != uint.MaxValue; i--)
-            {
-                ref ProgramContainer container = ref programs[programKeys[i]];
                 container.Dispose();
             }
 
@@ -153,21 +129,16 @@ namespace Simulation
         private readonly void FinishDestroyedPrograms(StatusCode statusCode)
         {
             World hostWorld = World;
-            Dictionary<uint, ProgramContainer> programs = Programs;
-            USpan<uint> programKeys = stackalloc uint[(int)programs.Count];
-            uint programCount = 0;
-            foreach (uint key in programs.Keys)
+            for (uint p = value->programs.Count - 1; p != uint.MaxValue; p--)
             {
-                programKeys[programCount++] = key;
-            }
-
-            for (uint i = programCount - 1; i != uint.MaxValue; i--)
-            {
-                ref ProgramContainer container = ref programs[programKeys[i]];
-                if (!container.didFinish && !hostWorld.ContainsEntity(container.entity))
+                ref ProgramContainer containerInList = ref value->programs[p];
+                if (containerInList.state != IsProgram.State.Finished && !hostWorld.ContainsEntity(containerInList.entity))
                 {
-                    container.didFinish = true;
-                    container.finish.Invoke(this, container.allocation, container.world, statusCode);
+                    containerInList.state = IsProgram.State.Finished;
+                    containerInList.finish.Invoke(this, containerInList.allocation, containerInList.world, statusCode);
+
+                    ref ProgramContainer containerInMap = ref value->programsMap[containerInList.entity];
+                    containerInMap.state = IsProgram.State.Finished;
                 }
             }
         }
@@ -188,9 +159,9 @@ namespace Simulation
 
             //tell host world
             World hostWorld = World;
-            for (uint i = 0; i < systems.Length; i++)
+            for (uint s = 0; s < systems.Length; s++)
             {
-                ref SystemContainer system = ref systems[i];
+                ref SystemContainer system = ref systems[s];
                 handled |= system.TryHandleMessage(hostWorld, messageType, messageContainer);
             }
 
@@ -215,9 +186,9 @@ namespace Simulation
 
             //tell host world
             World hostWorld = World;
-            for (uint i = 0; i < systems.Length; i++)
+            for (uint s = 0; s < systems.Length; s++)
             {
-                ref SystemContainer system = ref systems[i];
+                ref SystemContainer system = ref systems[s];
                 handled |= system.TryHandleMessage(hostWorld, messageType, messageContainer);
             }
 
@@ -229,27 +200,18 @@ namespace Simulation
 
         private readonly bool TryHandleMessagesWithPrograms(nint messageType, Allocation messageContainer)
         {
-            World hostWorld = World;
-            USpan<SystemContainer> systems = Systems;
-            ComponentType programComponent = value->programComponent;
             bool handled = false;
-            foreach (Chunk chunk in hostWorld.Chunks)
+            USpan<SystemContainer> systems = Systems;
+            for (uint p = 0; p < value->programs.Count; p++)
             {
-                if (chunk.Definition.Contains(programComponent))
+                ref ProgramContainer program = ref value->programs[p];
+                if (program.state == IsProgram.State.Active)
                 {
-                    USpan<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
-                    for (uint i = 0; i < programs.Length; i++)
+                    World programWorld = program.world;
+                    for (uint s = 0; s < systems.Length; s++)
                     {
-                        ref IsProgram program = ref programs[i];
-                        if (program.state == IsProgram.State.Active)
-                        {
-                            World programWorld = program.world;
-                            for (uint s = 0; s < systems.Length; s++)
-                            {
-                                ref SystemContainer system = ref systems[s];
-                                handled |= system.TryHandleMessage(programWorld, messageType, messageContainer);
-                            }
-                        }
+                        ref SystemContainer system = ref systems[s];
+                        handled |= system.TryHandleMessage(programWorld, messageType, messageContainer);
                     }
                 }
             }
@@ -263,7 +225,7 @@ namespace Simulation
         /// <returns>The delta time that was used to update with.</returns>
         public readonly TimeSpan Update()
         {
-            ref DateTime lastUpdateTime = ref Implementation.GetLastUpdateTime(value);
+            ref DateTime lastUpdateTime = ref value->lastUpdateTime;
             DateTime now = DateTime.UtcNow;
             if (lastUpdateTime == DateTime.MinValue)
             {
@@ -299,7 +261,6 @@ namespace Simulation
         private readonly void InitializeEachProgram()
         {
             World hostWorld = World;
-            Dictionary<uint, ProgramContainer> programs = Programs;
             ComponentType programComponent = value->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
@@ -314,16 +275,22 @@ namespace Simulation
                         {
                             uint entity = entities[i];
                             program.state = IsProgram.State.Active;
-                            if (programs.TryGetValue(entity, out ProgramContainer container))
+                            ref ProgramContainer containerInMap = ref value->programsMap.TryGetValue(entity, out bool contains);
+                            if (contains)
                             {
+                                ref ProgramContainer containerInList = ref value->programs[value->programs.IndexOf(containerInMap)];
+                                containerInMap.state = program.state;
+                                containerInList.state = program.state;
+
                                 program.world.Clear();
                                 program.start.Invoke(this, program.allocation, program.world);
-                                container.didFinish = false;
                             }
                             else
                             {
                                 program.start.Invoke(this, program.allocation, program.world);
-                                programs.Add(entity, new(entity, program, program.world, program.allocation));
+                                ProgramContainer newContainer = new(entity, program.state, program, program.world, program.allocation);
+                                value->programsMap.Add(entity, newContainer);
+                                value->programs.Add(newContainer);
                             }
                         }
                     }
@@ -334,30 +301,25 @@ namespace Simulation
         private readonly void UpdateEachProgram(TimeSpan delta)
         {
             World hostWorld = World;
-            Dictionary<uint, ProgramContainer> programs = Programs;
             ComponentType programComponent = value->programComponent;
-            foreach (Chunk chunk in hostWorld.Chunks)
+            for (uint p = 0; p < value->programs.Count; p++)
             {
-                if (chunk.Definition.Contains(programComponent))
+                ref ProgramContainer program = ref value->programs[p];
+                if (program.state == IsProgram.State.Active)
                 {
-                    USpan<uint> entities = chunk.Entities;
-                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
-                    for (uint i = 0; i < components.Length; i++)
+                    ref IsProgram component = ref hostWorld.GetComponent<IsProgram>(program.entity, programComponent);
+                    component.statusCode = program.update.Invoke(this, program.allocation, program.world, delta);
+                    if (component.statusCode != StatusCode.Continue)
                     {
-                        ref IsProgram program = ref components[i];
-                        if (program.state == IsProgram.State.Active)
-                        {
-                            program.statusCode = program.update.Invoke(this, program.allocation, program.world, delta);
-                            if (program.statusCode != StatusCode.Continue)
-                            {
-                                program.state = IsProgram.State.Finished;
-                                program.finish.Invoke(this, program.allocation, program.world, program.statusCode);
-                                
-                                uint entity = entities[i];
-                                ref ProgramContainer container = ref programs[entity];
-                                container.didFinish = true;
-                            }
-                        }
+                        program.state = IsProgram.State.Finished;
+                        component.state = IsProgram.State.Finished;
+                        program.finish.Invoke(this, program.allocation, program.world, component.statusCode);
+            
+                        uint entity = program.entity;
+                        ref ProgramContainer containerInMap = ref value->programsMap[entity];
+                        ref ProgramContainer containerInList = ref value->programs[value->programs.IndexOf(containerInMap)];
+                        containerInMap.state = program.state;
+                        containerInList.state = program.state;
                     }
                 }
             }
@@ -373,9 +335,9 @@ namespace Simulation
 
             World hostWorld = World;
             USpan<SystemContainer> systems = Systems;
-            for (uint i = 0; i < systems.Length; i++)
+            for (uint s = 0; s < systems.Length; s++)
             {
-                ref SystemContainer system = ref systems[i];
+                ref SystemContainer system = ref systems[s];
                 system.Update(hostWorld, delta);
             }
 
@@ -390,9 +352,9 @@ namespace Simulation
             InitializeSystemsNotStarted();
 
             USpan<SystemContainer> systems = Systems;
-            for (uint i = 0; i < systems.Length; i++)
+            for (uint s = 0; s < systems.Length; s++)
             {
-                ref SystemContainer system = ref systems[i];
+                ref SystemContainer system = ref systems[s];
                 system.Update(world, delta);
             }
         }
@@ -428,9 +390,9 @@ namespace Simulation
         {
             World hostWorld = World;
             USpan<SystemContainer> systems = Systems;
-            for (uint i = 0; i < systems.Length; i++)
+            for (uint s = 0; s < systems.Length; s++)
             {
-                ref SystemContainer container = ref systems[i];
+                ref SystemContainer container = ref systems[s];
                 if (!container.IsInitializedWith(hostWorld))
                 {
                     container.Start(hostWorld);
@@ -631,7 +593,8 @@ namespace Simulation
             public readonly ComponentType programComponent;
             public readonly World world;
             public readonly List<SystemContainer> systems;
-            public readonly Dictionary<uint, ProgramContainer> programs;
+            public readonly List<ProgramContainer> programs;
+            public readonly Dictionary<uint, ProgramContainer> programsMap;
 
             private Implementation(World world)
             {
@@ -640,6 +603,7 @@ namespace Simulation
                 lastUpdateTime = DateTime.MinValue;
                 systems = new(4);
                 programs = new(4);
+                programsMap = new(4);
             }
 
             /// <summary>
@@ -664,59 +628,10 @@ namespace Simulation
             {
                 Allocations.ThrowIfNull(simulator);
 
+                simulator->programsMap.Dispose();
                 simulator->programs.Dispose();
                 simulator->systems.Dispose();
                 Allocations.Free(ref simulator);
-            }
-
-            /// <summary>
-            /// Retrieves the <see cref="World"/> that a <see cref="Implementation"/> operates in.
-            /// </summary>
-            public static World GetWorld(Implementation* simulator)
-            {
-                Allocations.ThrowIfNull(simulator);
-
-                return simulator->world;
-            }
-
-            /// <summary>
-            /// Retrieves the last known time this simulator was updated.
-            /// </summary>
-            public static ref DateTime GetLastUpdateTime(Implementation* simulator)
-            {
-                Allocations.ThrowIfNull(simulator);
-
-                return ref simulator->lastUpdateTime;
-            }
-
-            /// <summary>
-            /// Retrieves the systems added to a <see cref="Implementation"/>.
-            /// </summary>
-            public static List<SystemContainer> GetSystems(Implementation* simulator)
-            {
-                Allocations.ThrowIfNull(simulator);
-
-                return simulator->systems;
-            }
-
-            /// <summary>
-            /// Retrieves the known programs in a <see cref="Implementation"/>.
-            /// </summary>
-            public static Dictionary<uint, ProgramContainer> GetPrograms(Implementation* simulator)
-            {
-                Allocations.ThrowIfNull(simulator);
-
-                return simulator->programs;
-            }
-
-            /// <summary>
-            /// Retrieves the number of systems in a <see cref="Implementation"/>.
-            /// </summary>
-            public static uint GetSystemCount(Implementation* simulator)
-            {
-                Allocations.ThrowIfNull(simulator);
-
-                return simulator->systems.Count;
             }
 
             /// <summary>
@@ -734,7 +649,7 @@ namespace Simulation
                     throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
                 }
 
-                World hostWorld = GetWorld(simulator);
+                World hostWorld = simulator->world;
                 RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
                 Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
@@ -777,7 +692,7 @@ namespace Simulation
             {
                 Allocations.ThrowIfNull(simulator);
 
-                World world = GetWorld(simulator);
+                World world = simulator->world;
                 nint systemType = RuntimeTypeTable.GetAddress<T>();
                 Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
 

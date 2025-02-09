@@ -10,7 +10,7 @@ namespace Simulation
     /// Container for a program running in a <see cref="World"/>,
     /// operated by a <see cref="Simulator"/>.
     /// </summary>
-    public struct ProgramContainer : IDisposable
+    public struct ProgramContainer : IDisposable, IEquatable<ProgramContainer>
     {
         /// <summary>
         /// The function to start the program.
@@ -42,15 +42,15 @@ namespace Simulation
         /// </summary>
         public readonly Allocation allocation;
 
-        public bool didFinish;
+        public IsProgram.State state;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProgramContainer"/> struct.
         /// </summary>
-        public ProgramContainer(uint entity, IsProgram component, World world, Allocation allocation)
+        public ProgramContainer(uint entity, IsProgram.State state, IsProgram component, World world, Allocation allocation)
         {
-            didFinish = false;
             this.entity = entity;
+            this.state = state;
             start = component.start;
             finish = component.finish;
             update = component.update;
@@ -62,6 +62,31 @@ namespace Simulation
         {
             world.Dispose();
             allocation.Dispose();
+        }
+
+        public readonly override bool Equals(object? obj)
+        {
+            return obj is ProgramContainer container && Equals(container);
+        }
+
+        public readonly bool Equals(ProgramContainer other)
+        {
+            return world == other.world;
+        }
+
+        public readonly override int GetHashCode()
+        {
+            return world.GetHashCode();
+        }
+
+        public static bool operator ==(ProgramContainer left, ProgramContainer right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ProgramContainer left, ProgramContainer right)
+        {
+            return !(left == right);
         }
     }
 }
