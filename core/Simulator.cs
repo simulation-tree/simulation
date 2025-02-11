@@ -3,6 +3,7 @@ using Simulation.Components;
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Unmanaged;
 using Worlds;
 
@@ -638,6 +639,7 @@ namespace Simulation
             /// Inserts a system of type <typeparamref name="T"/> to a <see cref="Implementation"/>.
             /// </summary>
             /// <exception cref="InvalidOperationException"></exception>
+            [SkipLocalsInit]
             public static SystemContainer<T> InsertSystem<T>(Implementation* simulator, uint index, Allocation input) where T : unmanaged, ISystem
             {
                 Allocations.ThrowIfNull(simulator);
