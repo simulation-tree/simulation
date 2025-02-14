@@ -7,7 +7,6 @@ namespace Simulation.Components
     /// <summary>
     /// Stores functions to start, update, and finish a program.
     /// </summary>
-    [Component]
     public struct IsProgram
     {
         /// <summary>
