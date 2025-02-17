@@ -81,11 +81,12 @@ namespace Simulation
         /// </summary>
         public void Dispose()
         {
+            World hostWorld = World;
             StatusCode statusCode = StatusCode.Termination;
-            InitializeSystemsNotStarted();
-            FinishDestroyedPrograms(statusCode);
-            InitializeEachProgram();
-            TerminateAllPrograms(statusCode);
+            InitializeSystemsNotStarted(hostWorld);
+            FinishDestroyedPrograms(hostWorld, statusCode);
+            InitializeEachProgram(hostWorld);
+            TerminateAllPrograms(hostWorld, statusCode);
 
             //dispose systems
             List<SystemContainer> systems = value->systems;
@@ -106,9 +107,8 @@ namespace Simulation
             Implementation.Free(ref value);
         }
 
-        private readonly void TerminateAllPrograms(StatusCode statusCode)
+        private readonly void TerminateAllPrograms(World hostWorld, StatusCode statusCode)
         {
-            World hostWorld = World;
             ComponentType programComponent = value->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
@@ -128,9 +128,8 @@ namespace Simulation
             }
         }
 
-        private readonly void FinishDestroyedPrograms(StatusCode statusCode)
+        private readonly void FinishDestroyedPrograms(World hostWorld, StatusCode statusCode)
         {
-            World hostWorld = World;
             for (uint p = value->programs.Count - 1; p != uint.MaxValue; p--)
             {
                 ref ProgramContainer containerInList = ref value->programs[p];
@@ -153,8 +152,9 @@ namespace Simulation
         /// <returns><c>true</c> if it was handled.</returns>
         public readonly bool TryHandleMessage<T>(T message) where T : unmanaged
         {
-            InitializeSystemsNotStarted();
-            InitializeEachProgram();
+            World hostWorld = World;
+            InitializeSystemsNotStarted(hostWorld);
+            InitializeEachProgram(hostWorld);
 
             using Allocation messageContainer = Allocation.Create(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
@@ -162,7 +162,6 @@ namespace Simulation
             bool handled = false;
 
             //tell host world
-            World hostWorld = World;
             for (uint s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
@@ -180,8 +179,9 @@ namespace Simulation
         /// <returns><c>true</c> if it was handled.</returns>
         public readonly bool TryHandleMessage<T>(ref T message) where T : unmanaged
         {
-            InitializeSystemsNotStarted();
-            InitializeEachProgram();
+            World hostWorld = World;
+            InitializeSystemsNotStarted(hostWorld);
+            InitializeEachProgram(hostWorld);
 
             using Allocation messageContainer = Allocation.Create(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
@@ -189,7 +189,6 @@ namespace Simulation
             bool handled = false;
 
             //tell host world
-            World hostWorld = World;
             for (uint s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
@@ -254,14 +253,14 @@ namespace Simulation
         /// </summary>
         public readonly void UpdatePrograms(TimeSpan delta)
         {
-            FinishDestroyedPrograms(StatusCode.Termination);
-            InitializeEachProgram();
-            UpdateEachProgram(delta);
+            World hostWorld = World;
+            FinishDestroyedPrograms(hostWorld, StatusCode.Termination);
+            InitializeEachProgram(hostWorld);
+            UpdateEachProgram(hostWorld, delta);
         }
 
-        private readonly void InitializeEachProgram()
+        private readonly void InitializeEachProgram(World hostWorld)
         {
-            World hostWorld = World;
             ComponentType programComponent = value->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
@@ -301,9 +300,8 @@ namespace Simulation
             }
         }
 
-        private readonly void UpdateEachProgram(TimeSpan delta)
+        private readonly void UpdateEachProgram(World hostWorld, TimeSpan delta)
         {
-            World hostWorld = World;
             ComponentType programComponent = value->programComponent;
             for (uint p = 0; p < value->activePrograms.Count; p++)
             {
@@ -332,9 +330,9 @@ namespace Simulation
         /// </summary>
         public readonly void UpdateSystems(TimeSpan delta)
         {
-            InitializeSystemsNotStarted();
-
             World hostWorld = World;
+            InitializeSystemsNotStarted(hostWorld);
+
             USpan<SystemContainer> systems = Systems;
             for (uint s = 0; s < systems.Length; s++)
             {
@@ -342,7 +340,7 @@ namespace Simulation
                 system.Update(hostWorld, delta);
             }
 
-            UpdateSystemsWithProgramWorlds(delta);
+            UpdateSystemsWithProgramWorlds(delta, hostWorld);
         }
 
         /// <summary>
@@ -350,7 +348,7 @@ namespace Simulation
         /// </summary>
         public readonly void UpdateSystems(TimeSpan delta, World world)
         {
-            InitializeSystemsNotStarted();
+            InitializeSystemsNotStarted(world);
 
             USpan<SystemContainer> systems = Systems;
             for (uint s = 0; s < systems.Length; s++)
@@ -360,9 +358,8 @@ namespace Simulation
             }
         }
 
-        private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta)
+        private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta, World hostWorld)
         {
-            World hostWorld = World;
             USpan<SystemContainer> systems = Systems;
             ComponentType programComponent = value->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
@@ -387,25 +384,23 @@ namespace Simulation
             }
         }
 
-        private readonly void InitializeSystemsNotStarted()
+        private readonly void InitializeSystemsNotStarted(World world)
         {
-            World hostWorld = World;
             USpan<SystemContainer> systems = Systems;
             for (uint s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer container = ref systems[s];
-                if (!container.IsInitializedWith(hostWorld))
+                if (!container.IsInitializedWith(world))
                 {
-                    container.Start(hostWorld);
+                    container.Start(world);
                 }
             }
 
-            InitializeSystemsWithProgramWorlds();
+            InitializeSystemsWithProgramWorlds(world);
         }
 
-        private readonly void InitializeSystemsWithProgramWorlds()
+        private readonly void InitializeSystemsWithProgramWorlds(World hostWorld)
         {
-            World hostWorld = World;
             USpan<SystemContainer> systems = Systems;
             ComponentType programComponent = value->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
