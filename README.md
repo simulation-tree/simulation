@@ -1,5 +1,7 @@
 # Simulation
 
+[![Test](https://github.com/game-simulations/simulation/actions/workflows/test.yml/badge.svg)](https://github.com/game-simulations/simulation/actions/workflows/test.yml)
+
 Library implementing programs executing within a simulator.
 
 ### Systems
