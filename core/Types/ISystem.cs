@@ -30,19 +30,20 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Called when this system has been initialized for every
-        /// program and simulator <see cref="World"/>.
+        /// Called to notify that the system has been initialized. First with the
+        /// simulator <see cref="World"/>, and then with each program <see cref="World"/>.
         /// </summary>
         void Start(in SystemContainer systemContainer, in World world);
 
         /// <summary>
-        /// Called for every program and simulator <see cref="World"/>.
+        /// Called when the simulator updates the simulation forward. 
+        /// First with the simulator <see cref="World"/>, and then with each program <see cref="World"/>.
         /// </summary>
         void Update(in SystemContainer systemContainer, in World world, in TimeSpan delta);
 
         /// <summary>
-        /// Called after the system has been removed from the <see cref="Simulator"/>
-        /// for every program and simulator <see cref="World"/>.
+        /// Called after the system has been removed from the <see cref="Simulator"/>,
+        /// or when it was disposed. In the reverse order that the system started.
         /// </summary>
         void Finish(in SystemContainer systemContainer, in World world);
     }

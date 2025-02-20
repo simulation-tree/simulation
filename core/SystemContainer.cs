@@ -8,7 +8,7 @@ using Worlds;
 namespace Simulation
 {
     /// <summary>
-    /// Contains a system added to a <see cref="Simulation.Simulator"/>.
+    /// Contains a system added to a <see cref="Simulator"/>.
     /// </summary>
     public readonly unsafe struct SystemContainer : IDisposable
     {
@@ -25,13 +25,13 @@ namespace Simulation
         private readonly Allocation allocation;
         private readonly Allocation input;
         private readonly Dictionary<nint, HandleMessage> handlers;
-        private readonly List<World> programWorlds;
+        private readonly List<World> worlds;
         private readonly StartSystem start;
         private readonly UpdateSystem update;
         private readonly FinishSystem finish;
 
         /// <summary>
-        /// The world that this system was created in.
+        /// The world of the simulator that this system was created in.
         /// </summary>
         public readonly World World => simulator.World;
 
@@ -62,7 +62,7 @@ namespace Simulation
             this.input = input;
             this.systemType = systemType;
             this.handlers = handlers;
-            programWorlds = new();
+            worlds = new();
             this.start = start;
             this.update = update;
             this.finish = finish;
@@ -93,7 +93,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         private readonly void ThrowIfDisposed()
         {
-            if (programWorlds.IsDisposed)
+            if (worlds.IsDisposed)
             {
                 throw new ObjectDisposedException($"System `{this}` has been disposed");
             }
@@ -106,14 +106,14 @@ namespace Simulation
         {
             ThrowIfDisposed();
 
-            for (uint i = programWorlds.Count - 1; i != uint.MaxValue; i--)
+            for (uint i = worlds.Count - 1; i != uint.MaxValue; i--)
             {
-                Finalize(programWorlds[i]);
+                Finalize(worlds[i]);
             }
 
             input.Dispose();
             allocation.Dispose();
-            programWorlds.Dispose();
+            worlds.Dispose();
             handlers.Dispose();
         }
 
@@ -138,53 +138,53 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Checks if this system is initialized with the given <paramref name="programWorld"/>.
+        /// Checks if this system is initialized with the given <paramref name="world"/>.
         /// </summary>
-        public readonly bool IsInitializedWith(World programWorld)
+        public readonly bool IsInitializedWith(World world)
         {
-            return programWorlds.Contains(programWorld);
+            return worlds.Contains(world);
         }
 
         /// <summary>
         /// Initializes this system with the given world as its context.
         /// </summary>
-        public readonly void Start(World programWorld)
+        public readonly void Start(World world)
         {
-            ThrowIfAlreadyInitializedWith(programWorld);
+            ThrowIfAlreadyInitializedWith(world);
 
-            programWorlds.Add(programWorld);
-            start.Invoke(this, programWorld);
+            worlds.Add(world);
+            start.Invoke(this, world);
         }
 
         /// <summary>
         /// Updates this system with the given world as its context.
         /// </summary>
-        public readonly void Update(World programWorld, TimeSpan delta)
+        public readonly void Update(World world, TimeSpan delta)
         {
-            ThrowIfNotInitializedWith(programWorld);
+            ThrowIfNotInitializedWith(world);
 
-            update.Invoke(this, programWorld, delta);
+            update.Invoke(this, world, delta);
         }
 
         /// <summary>
         /// Finalizes this system with the given world as its context.
         /// </summary>
-        public readonly void Finalize(World programWorld)
+        public readonly void Finalize(World world)
         {
-            ThrowIfNotInitializedWith(programWorld);
+            ThrowIfNotInitializedWith(world);
 
-            finish.Invoke(this, programWorld);
-            programWorlds.TryRemoveBySwapping(programWorld);
+            finish.Invoke(this, world);
+            worlds.TryRemoveBySwapping(world);
         }
 
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage(World programWorld, nint messageType, Allocation message)
+        public readonly bool TryHandleMessage(World world, nint messageType, Allocation message)
         {
             if (handlers.TryGetValue(messageType, out HandleMessage handler))
             {
-                return handler.Invoke(this, programWorld, message);
+                return handler.Invoke(this, world, message);
             }
 
             return false;
@@ -193,20 +193,20 @@ namespace Simulation
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage<T>(World programWorld, Allocation message) where T : unmanaged
+        public readonly bool TryHandleMessage<T>(World world, Allocation message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
-            return TryHandleMessage(programWorld, messageType, message);
+            return TryHandleMessage(world, messageType, message);
         }
 
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage<T>(World programWorld, ref T message) where T : unmanaged
+        public readonly bool TryHandleMessage<T>(World world, ref T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             using Allocation allocation = Allocation.Create(message);
-            if (TryHandleMessage(programWorld, messageType, allocation))
+            if (TryHandleMessage(world, messageType, allocation))
             {
                 message = allocation.Read<T>();
                 return true;
@@ -220,11 +220,11 @@ namespace Simulation
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage<T>(World programWorld, T message) where T : unmanaged
+        public readonly bool TryHandleMessage<T>(World world, T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             using Allocation allocation = Allocation.Create(message);
-            if (TryHandleMessage(programWorld, messageType, allocation))
+            if (TryHandleMessage(world, messageType, allocation))
             {
                 message = allocation.Read<T>();
                 return true;
@@ -236,24 +236,24 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Throws an <see cref="InvalidOperationException"/> if this system is not initialized with the given <paramref name="programWorld"/>.
+        /// Throws an <see cref="InvalidOperationException"/> if this system is not initialized with the given <paramref name="world"/>.
         /// </summary>
         /// <exception cref="InvalidOperationException"></exception>
         [Conditional("DEBUG")]
-        public readonly void ThrowIfNotInitializedWith(World programWorld)
+        public readonly void ThrowIfNotInitializedWith(World world)
         {
-            if (!IsInitializedWith(programWorld))
+            if (!IsInitializedWith(world))
             {
-                throw new InvalidOperationException($"System `{this}` is not initialized with world `{programWorld}`");
+                throw new InvalidOperationException($"System `{this}` is not initialized with world `{world}`");
             }
         }
 
         [Conditional("DEBUG")]
-        public readonly void ThrowIfAlreadyInitializedWith(World programWorld)
+        public readonly void ThrowIfAlreadyInitializedWith(World world)
         {
-            if (IsInitializedWith(programWorld))
+            if (IsInitializedWith(world))
             {
-                throw new InvalidOperationException($"System `{this}` is already initialized with world `{programWorld}`");
+                throw new InvalidOperationException($"System `{this}` is already initialized with world `{world}`");
             }
         }
 
