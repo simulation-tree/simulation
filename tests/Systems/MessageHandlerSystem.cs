@@ -1,5 +1,4 @@
-﻿using Simulation.Functions;
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using Unmanaged;
 using Worlds;
@@ -15,18 +14,16 @@ namespace Simulation.Tests
         }
 
         [UnmanagedCallersOnly]
-        private static HandleMessage.Boolean ReceiveEvent(SystemContainer container, World world, Allocation message)
+        private static StatusCode ReceiveEvent(SystemContainer container, World world, Allocation message)
         {
             if (container.World == world)
             {
                 Entity messageEntity = new(container.World);
                 messageEntity.AddComponent(message.Read<FixedString>());
-                return true;
+                return StatusCode.Success(0);
             }
-            else
-            {
-                return false;
-            }
+
+            return StatusCode.Continue;
         }
 
         void ISystem.Start(in SystemContainer systemContainer, in World world)

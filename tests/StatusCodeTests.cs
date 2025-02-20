@@ -51,6 +51,11 @@ namespace Simulation.Tests
             Assert.That(a, Is.Not.EqualTo(d));
             Assert.That(b, Is.Not.EqualTo(c));
             Assert.That(b, Is.Not.EqualTo(d));
+
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(a));
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(b));
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(c));
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(d));
         }
 
 #if DEBUG

@@ -180,20 +180,22 @@ namespace Simulation
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage(World world, nint messageType, Allocation message)
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage(World world, nint messageType, Allocation message)
         {
             if (handlers.TryGetValue(messageType, out HandleMessage handler))
             {
                 return handler.Invoke(this, world, message);
             }
 
-            return false;
+            return default;
         }
 
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage<T>(World world, Allocation message) where T : unmanaged
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage<T>(World world, Allocation message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             return TryHandleMessage(world, messageType, message);
@@ -202,37 +204,35 @@ namespace Simulation
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage<T>(World world, ref T message) where T : unmanaged
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage<T>(World world, ref T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             using Allocation allocation = Allocation.Create(message);
-            if (TryHandleMessage(world, messageType, allocation))
+            StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
+            if (statusCode != default)
             {
                 message = allocation.Read<T>();
-                return true;
             }
-            else
-            {
-                return false;
-            }
+
+            return statusCode;
         }
 
         /// <summary>
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
-        public readonly bool TryHandleMessage<T>(World world, T message) where T : unmanaged
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage<T>(World world, T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             using Allocation allocation = Allocation.Create(message);
-            if (TryHandleMessage(world, messageType, allocation))
+            StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
+            if (statusCode != default)
             {
                 message = allocation.Read<T>();
-                return true;
             }
-            else
-            {
-                return false;
-            }
+
+            return statusCode;
         }
 
         /// <summary>

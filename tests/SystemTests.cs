@@ -45,11 +45,11 @@ namespace Simulation.Tests
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
-                    bool handled = simulator.TryHandleMessage(new FixedString("test message"));
-                    Assert.That(handled, Is.True);
+                    StatusCode statusCode = simulator.TryHandleMessage(new FixedString("test message"));
+                    Assert.That(statusCode, Is.Not.EqualTo(default(StatusCode)));
 
-                    handled = simulator.TryHandleMessage(new FixedString("and another one"));
-                    Assert.That(handled, Is.True);
+                    statusCode = simulator.TryHandleMessage(new FixedString("and another one"));
+                    Assert.That(statusCode, Is.Not.EqualTo(default(StatusCode)));
 
                     Assert.That(world.Count, Is.EqualTo(2));
 

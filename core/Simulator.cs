@@ -149,8 +149,8 @@ namespace Simulation
         /// <summary>
         /// Submits a <paramref name="message"/> for a potential system to handle.
         /// </summary>
-        /// <returns><c>true</c> if it was handled.</returns>
-        public readonly bool TryHandleMessage<T>(T message) where T : unmanaged
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage<T>(T message) where T : unmanaged
         {
             World hostWorld = World;
             InitializeSystemsNotStarted(hostWorld);
@@ -159,25 +159,27 @@ namespace Simulation
             using Allocation messageContainer = Allocation.Create(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
-            bool handled = false;
 
             //tell host world
             for (uint s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
-                handled |= system.TryHandleMessage(hostWorld, messageType, messageContainer);
+                StatusCode statusCode = system.TryHandleMessage(hostWorld, messageType, messageContainer);
+                if (statusCode != default)
+                {
+                    return statusCode;
+                }
             }
 
             //tell program worlds
-            handled |= TryHandleMessagesWithPrograms(messageType, messageContainer);
-            return handled;
+            return TryHandleMessagesWithPrograms(messageType, messageContainer);
         }
 
         /// <summary>
         /// Submits a <paramref name="message"/> for a potential system to handle.
         /// </summary>
-        /// <returns><c>true</c> if it was handled.</returns>
-        public readonly bool TryHandleMessage<T>(ref T message) where T : unmanaged
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage<T>(ref T message) where T : unmanaged
         {
             World hostWorld = World;
             InitializeSystemsNotStarted(hostWorld);
@@ -186,24 +188,32 @@ namespace Simulation
             using Allocation messageContainer = Allocation.Create(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
-            bool handled = false;
+            StatusCode statusCode;
 
             //tell host world
             for (uint s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
-                handled |= system.TryHandleMessage(hostWorld, messageType, messageContainer);
+                statusCode = system.TryHandleMessage(hostWorld, messageType, messageContainer);
+                if (statusCode != default)
+                {
+                    message = messageContainer.Read<T>();
+                    return statusCode;
+                }
             }
 
             //tell program worlds
-            handled |= TryHandleMessagesWithPrograms(messageType, messageContainer);
-            message = messageContainer.Read<T>();
-            return handled;
+            statusCode = TryHandleMessagesWithPrograms(messageType, messageContainer);
+            if (statusCode != default)
+            {
+                message = messageContainer.Read<T>();
+            }
+
+            return statusCode;
         }
 
-        private readonly bool TryHandleMessagesWithPrograms(nint messageType, Allocation messageContainer)
+        private readonly StatusCode TryHandleMessagesWithPrograms(nint messageType, Allocation messageContainer)
         {
-            bool handled = false;
             USpan<SystemContainer> systems = Systems;
             for (uint p = 0; p < value->activePrograms.Count; p++)
             {
@@ -212,11 +222,15 @@ namespace Simulation
                 for (uint s = 0; s < systems.Length; s++)
                 {
                     ref SystemContainer system = ref systems[s];
-                    handled |= system.TryHandleMessage(programWorld, messageType, messageContainer);
+                    StatusCode statusCode = system.TryHandleMessage(programWorld, messageType, messageContainer);
+                    if (statusCode != default)
+                    {
+                        return statusCode;
+                    }
                 }
             }
 
-            return handled;
+            return default;
         }
 
         /// <summary>
