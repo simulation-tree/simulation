@@ -1,4 +1,5 @@
 ﻿using Collections;
+using Collections.Generic;
 using Simulation.Components;
 using Simulation.Functions;
 using System;
@@ -156,7 +157,7 @@ namespace Simulation
             InitializeSystemsNotStarted(hostWorld);
             InitializeEachProgram(hostWorld);
 
-            using Allocation messageContainer = Allocation.Create(message);
+            using Allocation messageContainer = Allocation.CreateFromValue(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
 
@@ -185,7 +186,7 @@ namespace Simulation
             InitializeSystemsNotStarted(hostWorld);
             InitializeEachProgram(hostWorld);
 
-            using Allocation messageContainer = Allocation.Create(message);
+            using Allocation messageContainer = Allocation.CreateFromValue(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
             StatusCode statusCode;
@@ -447,7 +448,7 @@ namespace Simulation
         /// </summary>
         public readonly SystemContainer<T> AddSystem<T>() where T : unmanaged, ISystem
         {
-            Allocation emptyInput = new(0);
+            Allocation emptyInput = Allocation.CreateEmpty();
             return Implementation.InsertSystem<T>(value, Systems.Length, emptyInput);
         }
 
@@ -458,7 +459,7 @@ namespace Simulation
 
         public readonly SystemContainer<T> InsertSystem<T>(uint index) where T : unmanaged, ISystem
         {
-            Allocation emptyInput = new(0);
+            Allocation emptyInput = Allocation.CreateEmpty();
             return Implementation.InsertSystem<T>(value, index, emptyInput);
         }
 
@@ -471,7 +472,7 @@ namespace Simulation
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
                 {
-                    Allocation emptyInput = new(0);
+                    Allocation emptyInput = Allocation.CreateEmpty();
                     return Implementation.InsertSystem<T>(value, i, emptyInput);
                 }
             }
@@ -488,7 +489,7 @@ namespace Simulation
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
                 {
-                    Allocation emptyInput = new(0);
+                    Allocation emptyInput = Allocation.CreateEmpty();
                     return Implementation.InsertSystem<T>(value, i + 1, emptyInput);
                 }
             }
@@ -667,7 +668,7 @@ namespace Simulation
                 RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
                 Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-                Allocation allocation = Allocation.Create(staticTemplate);
+                Allocation allocation = Allocation.CreateFromValue(staticTemplate);
 
                 //add message handlers
                 USpan<MessageHandler> buffer = stackalloc MessageHandler[64];

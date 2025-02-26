@@ -1,4 +1,5 @@
 ﻿using Collections;
+using Collections.Generic;
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
@@ -208,7 +209,7 @@ namespace Simulation
         public readonly StatusCode TryHandleMessage<T>(World world, ref T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
-            using Allocation allocation = Allocation.Create(message);
+            using Allocation allocation = Allocation.CreateFromValue(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
             {
@@ -225,7 +226,7 @@ namespace Simulation
         public readonly StatusCode TryHandleMessage<T>(World world, T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
-            using Allocation allocation = Allocation.Create(message);
+            using Allocation allocation = Allocation.CreateFromValue(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
             {

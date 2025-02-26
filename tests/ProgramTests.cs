@@ -1,4 +1,4 @@
-﻿using Collections;
+﻿using Collections.Generic;
 using Simulation.Components;
 using System;
 using System.Threading;
@@ -95,7 +95,7 @@ namespace Simulation.Tests
             using List<SystemContainer> updatedWorlds = new();
             using List<SystemContainer> finishedWorlds = new();
 
-            Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
+            Allocation input = Allocation.CreateFromValue((startedWorlds, updatedWorlds, finishedWorlds));
             SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
                 using (Program program = new Program<DummyProgram>(world, new(TimeSpan.FromSeconds(2))))
@@ -129,7 +129,7 @@ namespace Simulation.Tests
             using List<SystemContainer> updatedWorlds = new();
             using List<SystemContainer> finishedWorlds = new();
 
-            Allocation input = Allocation.Create((startedWorlds, updatedWorlds, finishedWorlds));
+            Allocation input = Allocation.CreateFromValue((startedWorlds, updatedWorlds, finishedWorlds));
             SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
                 using (Program program = new Program<ProgramThatUpdatesSystemsOnStart>(world))
