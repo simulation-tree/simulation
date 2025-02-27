@@ -18,7 +18,7 @@ namespace Simulation.Pointers
         internal Simulator(World world)
         {
             this.world = world;
-            programComponent = world.Schema.GetComponent<IsProgram>();
+            programComponent = world.Schema.GetComponentType<IsProgram>();
             lastUpdateTime = DateTime.MinValue;
             systems = new(4);
             programs = new(4);

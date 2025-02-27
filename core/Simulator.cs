@@ -153,7 +153,7 @@ namespace Simulation
             ComponentType programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
-                if (chunk.Definition.Contains(programComponent))
+                if (chunk.Definition.ContainsComponent(programComponent))
                 {
                     USpan<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
                     for (uint i = 0; i < programs.Length; i++)
@@ -319,7 +319,7 @@ namespace Simulation
             ComponentType programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
-                if (chunk.Definition.Contains(programComponent))
+                if (chunk.Definition.ContainsComponent(programComponent))
                 {
                     USpan<uint> entities = chunk.Entities;
                     USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
@@ -419,7 +419,7 @@ namespace Simulation
             ComponentType programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
-                if (chunk.Definition.Contains(programComponent))
+                if (chunk.Definition.ContainsComponent(programComponent))
                 {
                     USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
                     for (uint i = 0; i < components.Length; i++)
@@ -460,7 +460,7 @@ namespace Simulation
             ComponentType programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
-                if (chunk.Definition.Contains(programComponent))
+                if (chunk.Definition.ContainsComponent(programComponent))
                 {
                     USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
                     for (uint i = 0; i < components.Length; i++)
