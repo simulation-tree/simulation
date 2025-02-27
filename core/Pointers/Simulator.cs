@@ -8,7 +8,7 @@ namespace Simulation.Pointers
     internal struct Simulator
     {
         public DateTime lastUpdateTime;
-        public readonly ComponentType programComponent;
+        public readonly uint programComponent;
         public readonly World world;
         public readonly List<SystemContainer> systems;
         public readonly List<ProgramContainer> programs;
@@ -18,7 +18,7 @@ namespace Simulation.Pointers
         internal Simulator(World world)
         {
             this.world = world;
-            programComponent = world.Schema.GetComponentType<IsProgram>();
+            programComponent = world.Schema.GetComponentTypeIndex<IsProgram>();
             lastUpdateTime = DateTime.MinValue;
             systems = new(4);
             programs = new(4);

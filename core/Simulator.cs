@@ -150,7 +150,7 @@ namespace Simulation
 
         private readonly void TerminateAllPrograms(World hostWorld, StatusCode statusCode)
         {
-            ComponentType programComponent = simulator->programComponent;
+            uint programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
@@ -316,7 +316,7 @@ namespace Simulation
 
         private readonly void InitializeEachProgram(World hostWorld)
         {
-            ComponentType programComponent = simulator->programComponent;
+            uint programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
@@ -357,7 +357,7 @@ namespace Simulation
 
         private readonly void UpdateEachProgram(World hostWorld, TimeSpan delta)
         {
-            ComponentType programComponent = simulator->programComponent;
+            uint programComponent = simulator->programComponent;
             for (uint p = 0; p < simulator->activePrograms.Count; p++)
             {
                 ref ProgramContainer program = ref simulator->activePrograms[p];
@@ -416,7 +416,7 @@ namespace Simulation
         private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta, World hostWorld)
         {
             USpan<SystemContainer> systems = Systems;
-            ComponentType programComponent = simulator->programComponent;
+            uint programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
@@ -457,7 +457,7 @@ namespace Simulation
         private readonly void InitializeSystemsWithProgramWorlds(World hostWorld)
         {
             USpan<SystemContainer> systems = Systems;
-            ComponentType programComponent = simulator->programComponent;
+            uint programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
