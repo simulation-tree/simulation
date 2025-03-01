@@ -45,7 +45,7 @@ namespace Simulation
         {
             USpan<char> destination = stackalloc char[32];
             uint length = ToString(destination);
-            return destination.Slice(0, length).ToString();
+            return destination.GetSpan(length).ToString();
         }
 
         public readonly uint ToString(USpan<char> destination)
