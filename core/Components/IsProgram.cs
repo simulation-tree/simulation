@@ -39,7 +39,7 @@ namespace Simulation.Components
         /// <summary>
         /// The allocation of the program.
         /// </summary>
-        public readonly Allocation allocation;
+        public readonly MemoryAddress allocation;
 
         /// <summary>
         /// The world that was created for and belongs to the program.
@@ -49,7 +49,7 @@ namespace Simulation.Components
         /// <summary>
         /// Initializes a new instance of the <see cref="IsProgram"/> struct.
         /// </summary>
-        public IsProgram(StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation, World world)
+        public IsProgram(StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, MemoryAddress allocation, World world)
         {
             statusCode = default;
             this.start = start;

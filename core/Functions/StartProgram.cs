@@ -11,12 +11,12 @@ namespace Simulation.Functions
     public unsafe readonly struct StartProgram : IEquatable<StartProgram>
     {
 #if NET
-        private readonly delegate* unmanaged<Simulator, Allocation, World, void> function;
+        private readonly delegate* unmanaged<Simulator, MemoryAddress, World, void> function;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="StartProgram"/> struct.
         /// </summary>
-        public StartProgram(delegate* unmanaged<Simulator, Allocation, World, void> function)
+        public StartProgram(delegate* unmanaged<Simulator, MemoryAddress, World, void> function)
         {
             this.function = function;
         }
@@ -31,7 +31,7 @@ namespace Simulation.Functions
         /// <summary>
         /// Invokes the function.
         /// </summary>
-        public readonly void Invoke(Simulator simulator, Allocation allocation, World world)
+        public readonly void Invoke(Simulator simulator, MemoryAddress allocation, World world)
         {
             ThrowIfDefault();
 

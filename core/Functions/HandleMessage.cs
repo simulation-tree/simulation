@@ -10,12 +10,12 @@ namespace Simulation.Functions
     public unsafe readonly struct HandleMessage : IEquatable<HandleMessage>
     {
 #if NET
-        private readonly delegate* unmanaged<SystemContainer, World, Allocation, StatusCode> value;
+        private readonly delegate* unmanaged<SystemContainer, World, MemoryAddress, StatusCode> value;
 
         /// <summary>
         /// Creates a new <see cref="HandleMessage"/> instance.
         /// </summary>
-        public HandleMessage(delegate* unmanaged<SystemContainer, World, Allocation, StatusCode> value)
+        public HandleMessage(delegate* unmanaged<SystemContainer, World, MemoryAddress, StatusCode> value)
         {
             this.value = value;
         }
@@ -30,7 +30,7 @@ namespace Simulation.Functions
         /// <summary>
         /// Invokes the function.
         /// </summary>
-        public readonly StatusCode Invoke(SystemContainer container, World programWorld, Allocation message)
+        public readonly StatusCode Invoke(SystemContainer container, World programWorld, MemoryAddress message)
         {
             return value(container, programWorld, message);
         }

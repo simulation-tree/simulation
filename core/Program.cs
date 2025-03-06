@@ -26,7 +26,7 @@ namespace Simulation
         /// <summary>
         /// Retrieves the allocation that contains the program value.
         /// </summary>
-        public readonly Allocation Allocation => GetComponent<IsProgram>().allocation;
+        public readonly MemoryAddress Allocation => GetComponent<IsProgram>().allocation;
 
         readonly void IEntity.Describe(ref Archetype archetype)
         {
@@ -36,7 +36,7 @@ namespace Simulation
         /// <summary>
         /// Creates a new program in the given <see cref="World"/>.
         /// </summary>
-        public Program(World hostWorld, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, Allocation allocation)
+        public Program(World hostWorld, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, MemoryAddress allocation)
         {
             World programWorld = World.Create();
             programWorld.Schema.CopyFrom(hostWorld.Schema);
@@ -81,7 +81,7 @@ namespace Simulation
                 throw new InvalidOperationException($"Program `{typeof(T)}` does not have all functions defined");
             }
 
-            Allocation allocation = Allocation.CreateFromValue(program);
+            MemoryAddress allocation = MemoryAddress.Allocate(program);
             return new(world, start, update, finish, allocation);
         }
 
@@ -113,7 +113,7 @@ namespace Simulation
             archetype.Add<Program>();
         }
 
-        public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, Allocation allocation)
+        public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, MemoryAddress allocation)
         {
             program = new(world, start, update, finish, (ushort)sizeof(T), allocation);
         }
@@ -122,7 +122,7 @@ namespace Simulation
         {
             ushort typeSize = (ushort)sizeof(T);
             (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
-            Allocation allocation = Allocation.CreateFromValue(program);
+            MemoryAddress allocation = MemoryAddress.Allocate(program);
             this.program = new(world, start, update, finish, typeSize, allocation);
         }
 
@@ -131,7 +131,7 @@ namespace Simulation
             T program = new();
             ushort typeSize = (ushort)sizeof(T);
             (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
-            Allocation allocation = Allocation.CreateFromValue(program);
+            MemoryAddress allocation = MemoryAddress.Allocate(program);
             this.program = new(world, start, update, finish, typeSize, allocation);
         }
 

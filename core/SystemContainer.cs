@@ -23,8 +23,8 @@ namespace Simulation
         /// </summary>
         public readonly Simulator simulator;
 
-        private readonly Allocation allocation;
-        private readonly Allocation input;
+        private readonly MemoryAddress allocation;
+        private readonly MemoryAddress input;
         private readonly Dictionary<nint, HandleMessage> handlers;
         private readonly List<World> worlds;
         private readonly StartSystem start;
@@ -51,12 +51,12 @@ namespace Simulation
         /// <summary>
         /// The input data that this system was created with.
         /// </summary>
-        public readonly Allocation Input => input;
+        public readonly MemoryAddress Input => input;
 
         /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        public SystemContainer(Simulator simulator, Allocation allocation, Allocation input, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
+        public SystemContainer(Simulator simulator, MemoryAddress allocation, MemoryAddress input, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
         {
             this.simulator = simulator;
             this.allocation = allocation;
@@ -182,7 +182,7 @@ namespace Simulation
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
         /// <returns><see langword="default"/> if no handler was found.</returns>
-        public readonly StatusCode TryHandleMessage(World world, nint messageType, Allocation message)
+        public readonly StatusCode TryHandleMessage(World world, nint messageType, MemoryAddress message)
         {
             if (handlers.TryGetValue(messageType, out HandleMessage handler))
             {
@@ -196,7 +196,7 @@ namespace Simulation
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
         /// <returns><see langword="default"/> if no handler was found.</returns>
-        public readonly StatusCode TryHandleMessage<T>(World world, Allocation message) where T : unmanaged
+        public readonly StatusCode TryHandleMessage<T>(World world, MemoryAddress message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             return TryHandleMessage(world, messageType, message);
@@ -209,7 +209,7 @@ namespace Simulation
         public readonly StatusCode TryHandleMessage<T>(World world, ref T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
-            using Allocation allocation = Allocation.CreateFromValue(message);
+            using MemoryAddress allocation = MemoryAddress.Allocate(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
             {
@@ -226,7 +226,7 @@ namespace Simulation
         public readonly StatusCode TryHandleMessage<T>(World world, T message) where T : unmanaged
         {
             nint messageType = RuntimeTypeTable.GetAddress<T>();
-            using Allocation allocation = Allocation.CreateFromValue(message);
+            using MemoryAddress allocation = MemoryAddress.Allocate(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
             {

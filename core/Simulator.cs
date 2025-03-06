@@ -24,7 +24,7 @@ namespace Simulation
         {
             get
             {
-                Allocations.ThrowIfNull(simulator);
+                MemoryAddress.ThrowIfDefault(simulator);
 
                 return simulator->world;
             }
@@ -47,7 +47,7 @@ namespace Simulation
         {
             get
             {
-                Allocations.ThrowIfNull(simulator);
+                MemoryAddress.ThrowIfDefault(simulator);
 
                 return simulator->activePrograms.AsSpan();
             }
@@ -60,7 +60,7 @@ namespace Simulation
         {
             get
             {
-                Allocations.ThrowIfNull(simulator);
+                MemoryAddress.ThrowIfDefault(simulator);
 
                 return simulator->systems.AsSpan();
             }
@@ -103,7 +103,7 @@ namespace Simulation
                 throw new ArgumentException("Attempting to create a simulator without a world");
             }
 
-            ref Pointer simulator = ref Allocations.Allocate<Pointer>();
+            ref Pointer simulator = ref MemoryAddress.Allocate<Pointer>();
             simulator = new(world);
             fixed (Pointer* pointer = &simulator)
             {
@@ -116,7 +116,7 @@ namespace Simulation
         /// </summary>
         public void Dispose()
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
             World hostWorld = simulator->world;
             StatusCode statusCode = StatusCode.Termination;
@@ -145,7 +145,7 @@ namespace Simulation
             simulator->activePrograms.Dispose();
             simulator->programs.Dispose();
             simulator->systems.Dispose();
-            Allocations.Free(ref simulator);
+            MemoryAddress.Free(ref simulator);
         }
 
         private readonly void TerminateAllPrograms(World hostWorld, StatusCode statusCode)
@@ -197,7 +197,7 @@ namespace Simulation
             InitializeSystemsNotStarted(hostWorld);
             InitializeEachProgram(hostWorld);
 
-            using Allocation messageContainer = Allocation.CreateFromValue(message);
+            using MemoryAddress messageContainer = MemoryAddress.Allocate(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
 
@@ -226,7 +226,7 @@ namespace Simulation
             InitializeSystemsNotStarted(hostWorld);
             InitializeEachProgram(hostWorld);
 
-            using Allocation messageContainer = Allocation.CreateFromValue(message);
+            using MemoryAddress messageContainer = MemoryAddress.Allocate(message);
             nint messageType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = Systems;
             StatusCode statusCode;
@@ -253,7 +253,7 @@ namespace Simulation
             return statusCode;
         }
 
-        private readonly StatusCode TryHandleMessagesWithPrograms(nint messageType, Allocation messageContainer)
+        private readonly StatusCode TryHandleMessagesWithPrograms(nint messageType, MemoryAddress messageContainer)
         {
             USpan<SystemContainer> systems = Systems;
             for (uint p = 0; p < simulator->activePrograms.Count; p++)
@@ -488,9 +488,9 @@ namespace Simulation
         /// </summary>
         public readonly SystemContainer<T> AddSystem<T>() where T : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
-            Allocation emptyInput = Allocation.CreateEmpty();
+            MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
             T staticTemplate = default;
             (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
             if (start == default || update == default || finish == default)
@@ -502,7 +502,7 @@ namespace Simulation
             RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            Allocation allocation = Allocation.CreateFromValue(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
 
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
@@ -534,9 +534,9 @@ namespace Simulation
             return genericContainer;
         }
 
-        public readonly SystemContainer<T> AddSystem<T>(Allocation input) where T : unmanaged, ISystem
+        public readonly SystemContainer<T> AddSystem<T>(MemoryAddress input) where T : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
             T staticTemplate = default;
             (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
@@ -549,7 +549,7 @@ namespace Simulation
             RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            Allocation allocation = Allocation.CreateFromValue(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
 
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
@@ -583,9 +583,9 @@ namespace Simulation
 
         public readonly SystemContainer<T> InsertSystem<T>(uint index) where T : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
-            Allocation emptyInput = Allocation.CreateEmpty();
+            MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
             T staticTemplate = default;
             (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
             if (start == default || update == default || finish == default)
@@ -597,7 +597,7 @@ namespace Simulation
             RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            Allocation allocation = Allocation.CreateFromValue(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
 
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
@@ -629,9 +629,9 @@ namespace Simulation
             return genericContainer;
         }
 
-        public readonly SystemContainer<T> InsertSystem<T>(uint index, Allocation input) where T : unmanaged, ISystem
+        public readonly SystemContainer<T> InsertSystem<T>(uint index, MemoryAddress input) where T : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
             T staticTemplate = default;
             (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
@@ -644,7 +644,7 @@ namespace Simulation
             RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            Allocation allocation = Allocation.CreateFromValue(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
 
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
@@ -678,7 +678,7 @@ namespace Simulation
 
         public readonly SystemContainer<T> AddSystemBefore<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
             nint systemType = RuntimeTypeTable.GetAddress<O>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
@@ -687,7 +687,7 @@ namespace Simulation
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
                 {
-                    Allocation emptyInput = Allocation.CreateEmpty();
+                    MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
                     return InsertSystem<T>(i, emptyInput);
                 }
             }
@@ -697,7 +697,7 @@ namespace Simulation
 
         public readonly SystemContainer<T> AddSystemAfter<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
             nint systemType = RuntimeTypeTable.GetAddress<O>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
@@ -706,7 +706,7 @@ namespace Simulation
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
                 {
-                    Allocation emptyInput = Allocation.CreateEmpty();
+                    MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
                     return InsertSystem<T>(i + 1, emptyInput);
                 }
             }
@@ -719,7 +719,7 @@ namespace Simulation
         /// </summary>
         public readonly void RemoveSystem<T>(bool dispose = true) where T : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
             ThrowIfSystemIsMissing<T>();
 
             World world = simulator->world;
@@ -746,7 +746,7 @@ namespace Simulation
         /// </summary>
         public readonly bool ContainsSystem<T>() where T : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
             nint systemType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
@@ -771,7 +771,7 @@ namespace Simulation
         /// <exception cref="NullReferenceException"></exception>
         public readonly SystemContainer<T> GetSystem<T>() where T : unmanaged, ISystem
         {
-            Allocations.ThrowIfNull(simulator);
+            MemoryAddress.ThrowIfDefault(simulator);
 
             nint systemType = RuntimeTypeTable.GetAddress<T>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();

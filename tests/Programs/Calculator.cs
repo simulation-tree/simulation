@@ -9,7 +9,7 @@ namespace Simulation.Tests
         public byte value;
         public byte limit;
         public byte additive;
-        public FixedString text;
+        public ASCIIText256 text;
 
         private readonly World world;
 
@@ -18,7 +18,7 @@ namespace Simulation.Tests
             this.world = world;
         }
 
-        readonly void IProgram.Start(in Simulator simulator, in Allocation allocation, in World world)
+        readonly void IProgram.Start(in Simulator simulator, in MemoryAddress allocation, in World world)
         {
             Calculator calculator = new(world);
             calculator.limit = 4;

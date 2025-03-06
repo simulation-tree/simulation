@@ -40,14 +40,14 @@ namespace Simulation
         /// <summary>
         /// Native memory containing the program's data.
         /// </summary>
-        public readonly Allocation allocation;
+        public readonly MemoryAddress allocation;
 
         public IsProgram.State state;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ProgramContainer"/> struct.
         /// </summary>
-        public ProgramContainer(uint entity, IsProgram.State state, IsProgram component, World world, Allocation allocation)
+        public ProgramContainer(uint entity, IsProgram.State state, IsProgram component, World world, MemoryAddress allocation)
         {
             this.entity = entity;
             this.state = state;

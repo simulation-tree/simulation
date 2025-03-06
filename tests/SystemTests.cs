@@ -45,18 +45,18 @@ namespace Simulation.Tests
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
-                    StatusCode statusCode = simulator.TryHandleMessage(new FixedString("test message"));
+                    StatusCode statusCode = simulator.TryHandleMessage(new ASCIIText256("test message"));
                     Assert.That(statusCode, Is.Not.EqualTo(default(StatusCode)));
 
-                    statusCode = simulator.TryHandleMessage(new FixedString("and another one"));
+                    statusCode = simulator.TryHandleMessage(new ASCIIText256("and another one"));
                     Assert.That(statusCode, Is.Not.EqualTo(default(StatusCode)));
 
                     Assert.That(world.Count, Is.EqualTo(2));
 
                     Entity firstEntity = new(world, 1);
                     Entity secondEntity = new(world, 2);
-                    Assert.That(firstEntity.GetComponent<FixedString>(), Is.EqualTo(new FixedString("test message")));
-                    Assert.That(secondEntity.GetComponent<FixedString>(), Is.EqualTo(new FixedString("and another one")));
+                    Assert.That(firstEntity.GetComponent<ASCIIText256>(), Is.EqualTo(new ASCIIText256("test message")));
+                    Assert.That(secondEntity.GetComponent<ASCIIText256>(), Is.EqualTo(new ASCIIText256("and another one")));
                 }
             }
         }

@@ -23,7 +23,7 @@ namespace Simulation
         /// Initializes the program with its own program <see cref="World"/> instance.
         /// After all systems have been started.
         /// </summary>
-        void Start(in Simulator simulator, in Allocation allocation, in World world);
+        void Start(in Simulator simulator, in MemoryAddress allocation, in World world);
 
         /// <summary>
         /// Updates the program forward with the <see cref="World"/> that it was initialized with.

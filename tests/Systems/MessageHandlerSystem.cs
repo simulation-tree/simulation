@@ -9,17 +9,17 @@ namespace Simulation.Tests
     {
         unsafe readonly uint ISystem.GetMessageHandlers(USpan<MessageHandler> buffer)
         {
-            buffer[0] = MessageHandler.Create<FixedString>(new(&ReceiveEvent));
+            buffer[0] = MessageHandler.Create<ASCIIText256>(new(&ReceiveEvent));
             return 1;
         }
 
         [UnmanagedCallersOnly]
-        private static StatusCode ReceiveEvent(SystemContainer container, World world, Allocation message)
+        private static StatusCode ReceiveEvent(SystemContainer container, World world, MemoryAddress message)
         {
             if (container.World == world)
             {
                 Entity messageEntity = new(container.World);
-                messageEntity.AddComponent(message.Read<FixedString>());
+                messageEntity.AddComponent(message.Read<ASCIIText256>());
                 return StatusCode.Success(0);
             }
 

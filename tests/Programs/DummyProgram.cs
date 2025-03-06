@@ -27,7 +27,7 @@ namespace Simulation.Tests
             systems.Dispose();
         }
 
-        void IProgram.Start(in Simulator simulator, in Allocation allocation, in World world)
+        void IProgram.Start(in Simulator simulator, in MemoryAddress allocation, in World world)
         {
         }
 

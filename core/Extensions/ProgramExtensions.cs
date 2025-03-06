@@ -8,7 +8,7 @@ namespace Simulation
 {
     public static class ProgramExtensions
     {
-        public static void Start<T>(this ref T program, in Simulator simulator, in Allocation allocation, in World world) where T : unmanaged, IProgram
+        public static void Start<T>(this ref T program, in Simulator simulator, in MemoryAddress allocation, in World world) where T : unmanaged, IProgram
         {
             program.Start(in simulator, in allocation, in world);
         }
