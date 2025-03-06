@@ -3,44 +3,17 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Immutable;
 using System.Threading;
+using Unmanaged;
 
 namespace Simulation.Generator
 {
-    public abstract class Input
-    {
-        public readonly TypeDeclarationSyntax typeDeclaration;
-        public readonly ITypeSymbol typeSymbol;
-        public readonly string containingNamespace;
-        public readonly string typeName;
-        public readonly string fullTypeName;
-
-        public Input(TypeDeclarationSyntax typeDeclaration, ITypeSymbol typeSymbol)
-        {
-            this.typeDeclaration = typeDeclaration;
-            this.typeSymbol = typeSymbol;
-            containingNamespace = typeSymbol.ContainingNamespace.ToDisplayString();
-            typeName = typeSymbol.Name;
-            fullTypeName = typeSymbol.ToDisplayString();
-        }
-    }
-
-    public class ProgramInput : Input
-    {
-        public ProgramInput(TypeDeclarationSyntax typeDeclaration, ITypeSymbol typeSymbol) : base(typeDeclaration, typeSymbol)
-        {
-        }
-    }
-
-    public class SystemInput : Input
-    {
-        public SystemInput(TypeDeclarationSyntax typeDeclaration, ITypeSymbol typeSymbol) : base(typeDeclaration, typeSymbol)
-        {
-        }
-    }
-
     [Generator(LanguageNames.CSharp)]
     public class ImplementationGenerator : IIncrementalGenerator
     {
+        private const string MemoryAddressType = "Unmanaged.MemoryAddress";
+        private const string ProgramInterfaceType = "Simulation.IProgram";
+        private const string SystemInterfaceType = "Simulation.ISystem";
+
         private static readonly SourceBuilder source = new();
 
         void IIncrementalGenerator.Initialize(IncrementalGeneratorInitializationContext context)
@@ -63,11 +36,11 @@ namespace Simulation.Generator
                     ImmutableArray<INamedTypeSymbol> interfaces = typeSymbol.AllInterfaces;
                     foreach (INamedTypeSymbol interfaceSymbol in interfaces)
                     {
-                        if (interfaceSymbol.ToDisplayString() == "Simulation.IProgram")
+                        if (interfaceSymbol.ToDisplayString() == ProgramInterfaceType)
                         {
                             return new ProgramInput(typeDeclaration, typeSymbol);
                         }
-                        else if (interfaceSymbol.ToDisplayString() == "Simulation.ISystem")
+                        else if (interfaceSymbol.ToDisplayString() == SystemInterfaceType)
                         {
                             return new SystemInput(typeDeclaration, typeSymbol);
                         }
@@ -131,7 +104,11 @@ namespace Simulation.Generator
                             source.AppendLine("[UnmanagedCallersOnly]");
                             if (input is ProgramInput)
                             {
-                                source.AppendLine("static void Start(Simulator simulator, Allocation allocation, World world)");
+                                source.Append("static void Start(Simulator simulator, ");
+                                source.Append(MemoryAddressType);
+                                source.Append(" allocation, World world)");
+                                source.AppendLine();
+
                                 source.BeginGroup();
                                 {
                                     source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
@@ -153,7 +130,11 @@ namespace Simulation.Generator
                             source.AppendLine("[UnmanagedCallersOnly]");
                             if (input is ProgramInput)
                             {
-                                source.AppendLine("static StatusCode Update(Simulator simulator, Allocation allocation, World world, TimeSpan delta)");
+                                source.Append("static StatusCode Update(Simulator simulator, ");
+                                source.Append(MemoryAddressType);
+                                source.Append(" allocation, World world, TimeSpan delta)");
+                                source.AppendLine();
+
                                 source.BeginGroup();
                                 {
                                     source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
@@ -175,7 +156,11 @@ namespace Simulation.Generator
                             source.AppendLine("[UnmanagedCallersOnly]");
                             if (input is ProgramInput)
                             {
-                                source.AppendLine("static void Finish(Simulator simulator, Allocation allocation, World world, StatusCode statusCode)");
+                                source.Append("static void Finish(Simulator simulator, ");
+                                source.Append(MemoryAddressType);
+                                source.Append(" allocation, World world, StatusCode statusCode)");
+                                source.AppendLine();
+
                                 source.BeginGroup();
                                 {
                                     source.AppendLine($"ref {input.typeName} program = ref allocation.Read<{input.typeName}>();");
