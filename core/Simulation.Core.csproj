@@ -9,7 +9,7 @@
         <IsTrimmable>True</IsTrimmable>
         <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
         <Authors>popcron</Authors>
-        <Company>game-simulation</Company>
+        <Company>game-simulations</Company>
         <Description>Logic upon data</Description>
         <RepositoryUrl>https://github.com/game-simulations/simulation</RepositoryUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
