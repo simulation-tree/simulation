@@ -1,5 +1,6 @@
 ﻿using Simulation.Functions;
 using System;
+using Types;
 using Unmanaged;
 
 namespace Simulation
@@ -10,9 +11,9 @@ namespace Simulation
     public readonly struct MessageHandler : IEquatable<MessageHandler>
     {
         /// <summary>
-        /// The <see cref="RuntimeTypeHandle"/> of message to handle.
+        /// The type of message to handle.
         /// </summary>
-        public readonly nint messageType;
+        public readonly TypeLayout messageType;
 
         /// <summary>
         /// The function for handling.
@@ -22,19 +23,12 @@ namespace Simulation
         /// <summary>
         /// The <see cref="Type"/> of message to handle.
         /// </summary>
-        public readonly Type MessageType
-        {
-            get
-            {
-                RuntimeTypeHandle handle = RuntimeTypeTable.GetHandle(messageType);
-                return Type.GetTypeFromHandle(handle) ?? throw new();
-            }
-        }
+        public readonly Type MessageType => messageType.SystemType;
 
         /// <summary>
         /// Creates a new instance of the <see cref="MessageHandler"/> struct.
         /// </summary>
-        public MessageHandler(nint messageType, HandleMessage function)
+        public MessageHandler(TypeLayout messageType, HandleMessage function)
         {
             this.messageType = messageType;
             this.function = function;
@@ -43,12 +37,12 @@ namespace Simulation
         /// <summary>
         /// Builds a string representation of the message handler.
         /// </summary>
-        public readonly uint ToString(USpan<char> buffer)
+        public readonly uint ToString(USpan<char> destination)
         {
             string name = MessageType.Name;
             for (uint i = 0; i < name.Length; i++)
             {
-                buffer[i] = name[(int)i];
+                destination[i] = name[(int)i];
             }
 
             return (uint)name.Length;
@@ -85,8 +79,7 @@ namespace Simulation
         /// </summary>
         public static MessageHandler Create<T>(HandleMessage function) where T : unmanaged
         {
-            nint messageAddress = RuntimeTypeTable.GetAddress<T>();
-            return new(messageAddress, function);
+            return new(TypeRegistry.GetOrRegister<T>(), function);
         }
 
         /// <inheritdoc/>

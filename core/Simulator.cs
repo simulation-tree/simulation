@@ -4,6 +4,7 @@ using Simulation.Components;
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
+using Types;
 using Unmanaged;
 using Worlds;
 using Pointer = Simulation.Pointers.Simulator;
@@ -198,7 +199,7 @@ namespace Simulation
             InitializeEachProgram(hostWorld);
 
             using MemoryAddress messageContainer = MemoryAddress.Allocate(message);
-            nint messageType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
             USpan<SystemContainer> systems = Systems;
 
             //tell host world
@@ -227,7 +228,7 @@ namespace Simulation
             InitializeEachProgram(hostWorld);
 
             using MemoryAddress messageContainer = MemoryAddress.Allocate(message);
-            nint messageType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
             USpan<SystemContainer> systems = Systems;
             StatusCode statusCode;
 
@@ -253,7 +254,7 @@ namespace Simulation
             return statusCode;
         }
 
-        private readonly StatusCode TryHandleMessagesWithPrograms(nint messageType, MemoryAddress messageContainer)
+        private readonly StatusCode TryHandleMessagesWithPrograms(TypeLayout messageType, MemoryAddress messageContainer)
         {
             USpan<SystemContainer> systems = Systems;
             for (uint p = 0; p < simulator->activePrograms.Count; p++)
@@ -499,7 +500,7 @@ namespace Simulation
             }
 
             World hostWorld = simulator->world;
-            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
             MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
@@ -507,7 +508,7 @@ namespace Simulation
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
             uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<nint, HandleMessage> handlers;
+            Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
@@ -527,7 +528,7 @@ namespace Simulation
                 handlers = new(1);
             }
 
-            SystemContainer container = new(new(simulator), allocation, emptyInput, RuntimeTypeTable.GetAddress(systemType), handlers, start, update, finish);
+            SystemContainer container = new(new(simulator), allocation, emptyInput, systemType, handlers, start, update, finish);
             simulator->systems.Add(container);
             SystemContainer<T> genericContainer = new(new(simulator), simulator->systems.Count - 1, container.systemType);
             container.Start(hostWorld);
@@ -546,7 +547,7 @@ namespace Simulation
             }
 
             World hostWorld = simulator->world;
-            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
             MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
@@ -554,7 +555,7 @@ namespace Simulation
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
             uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<nint, HandleMessage> handlers;
+            Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
@@ -574,7 +575,7 @@ namespace Simulation
                 handlers = new(1);
             }
 
-            SystemContainer container = new(new(simulator), allocation, input, RuntimeTypeTable.GetAddress(systemType), handlers, start, update, finish);
+            SystemContainer container = new(new(simulator), allocation, input, systemType, handlers, start, update, finish);
             simulator->systems.Add(container);
             SystemContainer<T> genericContainer = new(new(simulator), simulator->systems.Count - 1, container.systemType);
             container.Start(hostWorld);
@@ -594,7 +595,7 @@ namespace Simulation
             }
 
             World hostWorld = simulator->world;
-            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
             MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
@@ -602,7 +603,7 @@ namespace Simulation
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
             uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<nint, HandleMessage> handlers;
+            Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
@@ -622,7 +623,7 @@ namespace Simulation
                 handlers = new(1);
             }
 
-            SystemContainer container = new(new(simulator), allocation, emptyInput, RuntimeTypeTable.GetAddress(systemType), handlers, start, update, finish);
+            SystemContainer container = new(new(simulator), allocation, emptyInput, systemType, handlers, start, update, finish);
             simulator->systems.Insert(index, container);
             SystemContainer<T> genericContainer = new(new(simulator), index, container.systemType);
             container.Start(hostWorld);
@@ -641,7 +642,7 @@ namespace Simulation
             }
 
             World hostWorld = simulator->world;
-            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
             MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
@@ -649,7 +650,7 @@ namespace Simulation
             //add message handlers
             USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
             uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<nint, HandleMessage> handlers;
+            Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
@@ -669,7 +670,7 @@ namespace Simulation
                 handlers = new(1);
             }
 
-            SystemContainer container = new(new(simulator), allocation, input, RuntimeTypeTable.GetAddress(systemType), handlers, start, update, finish);
+            SystemContainer container = new(new(simulator), allocation, input, systemType, handlers, start, update, finish);
             simulator->systems.Insert(index, container);
             SystemContainer<T> genericContainer = new(new(simulator), index, container.systemType);
             container.Start(hostWorld);
@@ -680,12 +681,12 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint systemType = RuntimeTypeTable.GetAddress<O>();
+            TypeLayout otherSystemType = TypeRegistry.GetOrRegister<O>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
             for (uint i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
-                if (system.systemType == systemType)
+                if (system.systemType == otherSystemType)
                 {
                     MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
                     return InsertSystem<T>(i, emptyInput);
@@ -699,12 +700,12 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint systemType = RuntimeTypeTable.GetAddress<O>();
+            TypeLayout otherSystemType = TypeRegistry.GetOrRegister<O>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
             for (uint i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
-                if (system.systemType == systemType)
+                if (system.systemType == otherSystemType)
                 {
                     MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
                     return InsertSystem<T>(i + 1, emptyInput);
@@ -723,7 +724,7 @@ namespace Simulation
             ThrowIfSystemIsMissing<T>();
 
             World world = simulator->world;
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
 
             for (uint i = 0; i < simulator->systems.Count; i++)
@@ -748,7 +749,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
             for (uint i = 0; i < systems.Length; i++)
             {
@@ -773,7 +774,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
             for (uint i = 0; i < systems.Length; i++)
             {
@@ -794,7 +795,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfSystemIsMissing<T>() where T : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             USpan<SystemContainer> systems = simulator->systems.AsSpan();
             for (uint i = 0; i < systems.Length; i++)
             {

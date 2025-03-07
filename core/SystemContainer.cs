@@ -3,6 +3,7 @@ using Collections.Generic;
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
+using Types;
 using Unmanaged;
 using Worlds;
 
@@ -14,9 +15,9 @@ namespace Simulation
     public readonly unsafe struct SystemContainer : IDisposable
     {
         /// <summary>
-        /// The <see cref="RuntimeTypeHandle"/> of this system.
+        /// The type of this system.
         /// </summary>
-        public readonly nint systemType;
+        public readonly TypeLayout systemType;
 
         /// <summary>
         /// The simulator that this system was created in.
@@ -25,7 +26,7 @@ namespace Simulation
 
         private readonly MemoryAddress allocation;
         private readonly MemoryAddress input;
-        private readonly Dictionary<nint, HandleMessage> handlers;
+        private readonly Dictionary<TypeLayout, HandleMessage> handlers;
         private readonly List<World> worlds;
         private readonly StartSystem start;
         private readonly UpdateSystem update;
@@ -37,16 +38,9 @@ namespace Simulation
         public readonly World World => simulator.World;
 
         /// <summary>
-        /// The <see cref="Type"/> of this system.
+        /// The <see cref="System.Type"/> of this system.
         /// </summary>
-        public readonly Type Type
-        {
-            get
-            {
-                RuntimeTypeHandle handle = RuntimeTypeTable.GetHandle(systemType);
-                return Type.GetTypeFromHandle(handle) ?? throw new();
-            }
-        }
+        public readonly Type Type => systemType.SystemType;
 
         /// <summary>
         /// The input data that this system was created with.
@@ -56,7 +50,7 @@ namespace Simulation
         /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        public SystemContainer(Simulator simulator, MemoryAddress allocation, MemoryAddress input, nint systemType, Dictionary<nint, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
+        public SystemContainer(Simulator simulator, MemoryAddress allocation, MemoryAddress input, TypeLayout systemType, Dictionary<TypeLayout, HandleMessage> handlers, StartSystem start, UpdateSystem update, FinishSystem finish)
         {
             this.simulator = simulator;
             this.allocation = allocation;
@@ -72,12 +66,12 @@ namespace Simulation
         /// <summary>
         /// Builds a string representation of the system.
         /// </summary>
-        public readonly uint ToString(USpan<char> buffer)
+        public readonly uint ToString(USpan<char> destination)
         {
             string name = Type.Name;
             for (uint i = 0; i < name.Length; i++)
             {
-                buffer[i] = name[(int)i];
+                destination[i] = name[(int)i];
             }
 
             return (uint)name.Length;
@@ -182,7 +176,7 @@ namespace Simulation
         /// Tries to handle the given <paramref name="message"/>.
         /// </summary>
         /// <returns><see langword="default"/> if no handler was found.</returns>
-        public readonly StatusCode TryHandleMessage(World world, nint messageType, MemoryAddress message)
+        public readonly StatusCode TryHandleMessage(World world, TypeLayout messageType, MemoryAddress message)
         {
             if (handlers.TryGetValue(messageType, out HandleMessage handler))
             {
@@ -198,7 +192,7 @@ namespace Simulation
         /// <returns><see langword="default"/> if no handler was found.</returns>
         public readonly StatusCode TryHandleMessage<T>(World world, MemoryAddress message) where T : unmanaged
         {
-            nint messageType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
             return TryHandleMessage(world, messageType, message);
         }
 
@@ -208,7 +202,7 @@ namespace Simulation
         /// <returns><see langword="default"/> if no handler was found.</returns>
         public readonly StatusCode TryHandleMessage<T>(World world, ref T message) where T : unmanaged
         {
-            nint messageType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
             using MemoryAddress allocation = MemoryAddress.Allocate(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
@@ -225,7 +219,7 @@ namespace Simulation
         /// <returns><see langword="default"/> if no handler was found.</returns>
         public readonly StatusCode TryHandleMessage<T>(World world, T message) where T : unmanaged
         {
-            nint messageType = RuntimeTypeTable.GetAddress<T>();
+            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
             using MemoryAddress allocation = MemoryAddress.Allocate(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
@@ -261,8 +255,8 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfNotSameType<T>() where T : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
-            if (this.systemType != systemType)
+            TypeLayout type = TypeRegistry.GetOrRegister<T>();
+            if (systemType != type)
             {
                 throw new InvalidOperationException($"System `{this}` is not of type `{typeof(T)}`");
             }
@@ -275,9 +269,9 @@ namespace Simulation
     public unsafe readonly struct SystemContainer<T> where T : unmanaged, ISystem
     {
         public readonly Simulator simulator;
+        public readonly TypeLayout systemType;
 
         private readonly uint index;
-        private readonly nint systemType;
 
         /// <summary>
         /// The system's data.
@@ -303,7 +297,7 @@ namespace Simulation
         /// Initializes a new <see cref="SystemContainer{T}"/> instance with an
         /// existing system index.
         /// </summary>
-        internal SystemContainer(Simulator simulator, uint index, nint systemType)
+        internal SystemContainer(Simulator simulator, uint index, TypeLayout systemType)
         {
             this.simulator = simulator;
             this.index = index;
