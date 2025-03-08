@@ -9,9 +9,9 @@
         <IsTrimmable>True</IsTrimmable>
         <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
         <Authors>popcron</Authors>
-        <Company>game-simulations</Company>
+        <Company>simulation-tree</Company>
         <Description>Logic upon data</Description>
-        <RepositoryUrl>https://github.com/game-simulations/simulation</RepositoryUrl>
+        <RepositoryUrl>https://github.com/simulation-tree/simulation</RepositoryUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>ecs</PackageTags>
         <Title>Simulation Core</Title>

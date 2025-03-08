@@ -1,6 +1,6 @@
 # Simulation
 
-[![Test](https://github.com/game-simulations/simulation/actions/workflows/test.yml/badge.svg)](https://github.com/game-simulations/simulation/actions/workflows/test.yml)
+[![Test](https://github.com/simulation-tree/simulation/actions/workflows/test.yml/badge.svg)](https://github.com/simulation-tree/simulation/actions/workflows/test.yml)
 
 Library implementing programs executing within a simulator.
 
