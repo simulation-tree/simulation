@@ -20,9 +20,9 @@ namespace Simulation.Functions
             this.value = value;
         }
 #else
-        private readonly delegate*<SystemContainer, World, Allocation, StatusCode> value;
+        private readonly delegate*<SystemContainer, World, MemoryAddress, StatusCode> value;
 
-        public HandleMessage(delegate*<SystemContainer, World, Allocation, StatusCode> value)
+        public HandleMessage(delegate*<SystemContainer, World, MemoryAddress, StatusCode> value)
         {
             this.value = value;
         }

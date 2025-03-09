@@ -21,9 +21,9 @@ namespace Simulation.Functions
             this.function = function;
         }
 #else
-        private readonly delegate*<Simulator, Allocation, World, TimeSpan, StatusCode> function;
+        private readonly delegate*<Simulator, MemoryAddress, World, TimeSpan, StatusCode> function;
 
-        public UpdateProgram(delegate*<Simulator, Allocation, World, TimeSpan, StatusCode> function)
+        public UpdateProgram(delegate*<Simulator, MemoryAddress, World, TimeSpan, StatusCode> function)
         {
             this.function = function;
         }
