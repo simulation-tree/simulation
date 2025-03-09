@@ -47,8 +47,8 @@ namespace Simulation.Tests
 
         void IProgram.Finish(in StatusCode statusCode)
         {
-            USpan<char> buffer = stackalloc char[64];
-            uint length = statusCode.ToString(buffer);
+            Span<char> buffer = stackalloc char[64];
+            int length = statusCode.ToString(buffer);
             text = new(buffer.Slice(0, length));
         }
     }

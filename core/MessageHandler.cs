@@ -37,23 +37,23 @@ namespace Simulation
         /// <summary>
         /// Builds a string representation of the message handler.
         /// </summary>
-        public readonly uint ToString(USpan<char> destination)
+        public readonly int ToString(Span<char> destination)
         {
             string name = MessageType.Name;
-            for (uint i = 0; i < name.Length; i++)
+            for (int i = 0; i < name.Length; i++)
             {
-                destination[i] = name[(int)i];
+                destination[i] = name[i];
             }
 
-            return (uint)name.Length;
+            return name.Length;
         }
 
         /// <inheritdoc/>
         public readonly override string ToString()
         {
-            USpan<char> buffer = stackalloc char[256];
-            uint length = ToString(buffer);
-            return buffer.GetSpan(length).ToString();
+            Span<char> buffer = stackalloc char[256];
+            int length = ToString(buffer);
+            return buffer.Slice(0, length).ToString();
         }
 
         /// <inheritdoc/>

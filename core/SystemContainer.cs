@@ -66,23 +66,23 @@ namespace Simulation
         /// <summary>
         /// Builds a string representation of the system.
         /// </summary>
-        public readonly uint ToString(USpan<char> destination)
+        public readonly int ToString(Span<char> destination)
         {
             string name = Type.Name;
-            for (uint i = 0; i < name.Length; i++)
+            for (int i = 0; i < name.Length; i++)
             {
-                destination[i] = name[(int)i];
+                destination[i] = name[i];
             }
 
-            return (uint)name.Length;
+            return name.Length;
         }
 
         /// <inheritdoc/>
         public readonly override string ToString()
         {
-            USpan<char> buffer = stackalloc char[256];
-            uint length = ToString(buffer);
-            return buffer.GetSpan(length).ToString();
+            Span<char> buffer = stackalloc char[256];
+            int length = ToString(buffer);
+            return buffer.Slice(0, length).ToString();
         }
 
         [Conditional("DEBUG")]
@@ -101,7 +101,7 @@ namespace Simulation
         {
             ThrowIfDisposed();
 
-            for (uint i = worlds.Count - 1; i != uint.MaxValue; i--)
+            for (int i = worlds.Count - 1; i >= 0; i--)
             {
                 Finalize(worlds[i]);
             }
@@ -203,7 +203,7 @@ namespace Simulation
         public readonly StatusCode TryHandleMessage<T>(World world, ref T message) where T : unmanaged
         {
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            using MemoryAddress allocation = MemoryAddress.Allocate(message);
+            using MemoryAddress allocation = MemoryAddress.AllocateValue(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
             {
@@ -220,7 +220,7 @@ namespace Simulation
         public readonly StatusCode TryHandleMessage<T>(World world, T message) where T : unmanaged
         {
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            using MemoryAddress allocation = MemoryAddress.Allocate(message);
+            using MemoryAddress allocation = MemoryAddress.AllocateValue(message);
             StatusCode statusCode = TryHandleMessage(world, messageType, allocation);
             if (statusCode != default)
             {
@@ -271,7 +271,7 @@ namespace Simulation
         public readonly Simulator simulator;
         public readonly TypeLayout systemType;
 
-        private readonly uint index;
+        private readonly int index;
 
         /// <summary>
         /// The system's data.
@@ -297,7 +297,7 @@ namespace Simulation
         /// Initializes a new <see cref="SystemContainer{T}"/> instance with an
         /// existing system index.
         /// </summary>
-        internal SystemContainer(Simulator simulator, uint index, TypeLayout systemType)
+        internal SystemContainer(Simulator simulator, int index, TypeLayout systemType)
         {
             this.simulator = simulator;
             this.index = index;

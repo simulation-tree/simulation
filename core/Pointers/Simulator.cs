@@ -8,7 +8,7 @@ namespace Simulation.Pointers
     internal struct Simulator
     {
         public DateTime lastUpdateTime;
-        public readonly uint programComponent;
+        public readonly int programComponent;
         public readonly World world;
         public readonly List<SystemContainer> systems;
         public readonly List<ProgramContainer> programs;

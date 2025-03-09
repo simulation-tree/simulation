@@ -21,7 +21,7 @@ namespace Simulation.Tests
         {
             if (systemContainer.World == world)
             {
-                uint stride = (uint)sizeof(List<SystemContainer>);
+                int stride = sizeof(List<SystemContainer>);
                 List<SystemContainer> startedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 0);
                 List<SystemContainer> updatedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 1);
                 List<SystemContainer> finishedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 2);

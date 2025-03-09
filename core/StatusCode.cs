@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using Unmanaged;
 
 namespace Simulation
 {
@@ -43,14 +42,14 @@ namespace Simulation
 
         public override string ToString()
         {
-            USpan<char> destination = stackalloc char[32];
-            uint length = ToString(destination);
-            return destination.GetSpan(length).ToString();
+            Span<char> destination = stackalloc char[32];
+            int length = ToString(destination);
+            return destination.Slice(0, length).ToString();
         }
 
-        public readonly uint ToString(USpan<char> destination)
+        public readonly int ToString(Span<char> destination)
         {
-            uint length = 0;
+            int length = 0;
             if (HasSuccess(out byte code))
             {
                 destination[length++] = 'S';

@@ -81,7 +81,7 @@ namespace Simulation
                 throw new InvalidOperationException($"Program `{typeof(T)}` does not have all functions defined");
             }
 
-            MemoryAddress allocation = MemoryAddress.Allocate(program);
+            MemoryAddress allocation = MemoryAddress.AllocateValue(program);
             return new(world, start, update, finish, allocation);
         }
 
@@ -122,7 +122,7 @@ namespace Simulation
         {
             ushort typeSize = (ushort)sizeof(T);
             (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
-            MemoryAddress allocation = MemoryAddress.Allocate(program);
+            MemoryAddress allocation = MemoryAddress.AllocateValue(program);
             this.program = new(world, start, update, finish, typeSize, allocation);
         }
 
@@ -131,7 +131,7 @@ namespace Simulation
             T program = new();
             ushort typeSize = (ushort)sizeof(T);
             (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
-            MemoryAddress allocation = MemoryAddress.Allocate(program);
+            MemoryAddress allocation = MemoryAddress.AllocateValue(program);
             this.program = new(world, start, update, finish, typeSize, allocation);
         }
 

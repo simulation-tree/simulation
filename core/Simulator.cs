@@ -44,7 +44,7 @@ namespace Simulation
         /// <summary>
         /// All active programs.
         /// </summary>
-        public readonly USpan<ProgramContainer> Programs
+        public readonly System.Span<ProgramContainer> Programs
         {
             get
             {
@@ -57,7 +57,7 @@ namespace Simulation
         /// <summary>
         /// All added systems.
         /// </summary>
-        public readonly USpan<SystemContainer> Systems
+        public readonly System.Span<SystemContainer> Systems
         {
             get
             {
@@ -136,7 +136,7 @@ namespace Simulation
             }
 
             //dispose programs
-            for (uint i = 0; i < simulator->programs.Count; i++)
+            for (int i = 0; i < simulator->programs.Count; i++)
             {
                 ref ProgramContainer program = ref simulator->programs[i];
                 program.Dispose();
@@ -151,13 +151,13 @@ namespace Simulation
 
         private readonly void TerminateAllPrograms(World hostWorld, StatusCode statusCode)
         {
-            uint programComponent = simulator->programComponent;
+            int programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
                 {
-                    USpan<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
-                    for (uint i = 0; i < programs.Length; i++)
+                    Span<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
+                    for (int i = 0; i < programs.Length; i++)
                     {
                         ref IsProgram program = ref programs[i];
                         if (program.state != IsProgram.State.Finished)
@@ -172,7 +172,7 @@ namespace Simulation
 
         private readonly void FinishDestroyedPrograms(World hostWorld, StatusCode statusCode)
         {
-            for (uint p = simulator->programs.Count - 1; p != uint.MaxValue; p--)
+            for (int p = simulator->programs.Count - 1; p >= 0; p--)
             {
                 ref ProgramContainer containerInList = ref simulator->programs[p];
                 if (containerInList.state != IsProgram.State.Finished && !hostWorld.ContainsEntity(containerInList.entity))
@@ -198,12 +198,12 @@ namespace Simulation
             InitializeSystemsNotStarted(hostWorld);
             InitializeEachProgram(hostWorld);
 
-            using MemoryAddress messageContainer = MemoryAddress.Allocate(message);
+            using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            USpan<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = Systems;
 
             //tell host world
-            for (uint s = 0; s < systems.Length; s++)
+            for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
                 StatusCode statusCode = system.TryHandleMessage(hostWorld, messageType, messageContainer);
@@ -227,13 +227,13 @@ namespace Simulation
             InitializeSystemsNotStarted(hostWorld);
             InitializeEachProgram(hostWorld);
 
-            using MemoryAddress messageContainer = MemoryAddress.Allocate(message);
+            using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            USpan<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = Systems;
             StatusCode statusCode;
 
             //tell host world
-            for (uint s = 0; s < systems.Length; s++)
+            for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
                 statusCode = system.TryHandleMessage(hostWorld, messageType, messageContainer);
@@ -256,12 +256,12 @@ namespace Simulation
 
         private readonly StatusCode TryHandleMessagesWithPrograms(TypeLayout messageType, MemoryAddress messageContainer)
         {
-            USpan<SystemContainer> systems = Systems;
-            for (uint p = 0; p < simulator->activePrograms.Count; p++)
+            Span<SystemContainer> systems = Systems;
+            for (int p = 0; p < simulator->activePrograms.Count; p++)
             {
                 ref ProgramContainer program = ref simulator->activePrograms[p];
                 World programWorld = program.world;
-                for (uint s = 0; s < systems.Length; s++)
+                for (int s = 0; s < systems.Length; s++)
                 {
                     ref SystemContainer system = ref systems[s];
                     StatusCode statusCode = system.TryHandleMessage(programWorld, messageType, messageContainer);
@@ -317,14 +317,14 @@ namespace Simulation
 
         private readonly void InitializeEachProgram(World hostWorld)
         {
-            uint programComponent = simulator->programComponent;
+            int programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
                 {
-                    USpan<uint> entities = chunk.Entities;
-                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
-                    for (uint i = 0; i < components.Length; i++)
+                    ReadOnlySpan<uint> entities = chunk.Entities;
+                    Span<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (int i = 0; i < components.Length; i++)
                     {
                         ref IsProgram program = ref components[i];
                         if (program.state == IsProgram.State.Uninitialized)
@@ -358,8 +358,8 @@ namespace Simulation
 
         private readonly void UpdateEachProgram(World hostWorld, TimeSpan delta)
         {
-            uint programComponent = simulator->programComponent;
-            for (uint p = 0; p < simulator->activePrograms.Count; p++)
+            int programComponent = simulator->programComponent;
+            for (int p = 0; p < simulator->activePrograms.Count; p++)
             {
                 ref ProgramContainer program = ref simulator->activePrograms[p];
                 ref IsProgram component = ref hostWorld.GetComponent<IsProgram>(program.entity, programComponent);
@@ -389,8 +389,8 @@ namespace Simulation
             World hostWorld = World;
             InitializeSystemsNotStarted(hostWorld);
 
-            USpan<SystemContainer> systems = Systems;
-            for (uint s = 0; s < systems.Length; s++)
+            Span<SystemContainer> systems = Systems;
+            for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
                 system.Update(hostWorld, delta);
@@ -406,8 +406,8 @@ namespace Simulation
         {
             InitializeSystemsNotStarted(world);
 
-            USpan<SystemContainer> systems = Systems;
-            for (uint s = 0; s < systems.Length; s++)
+            Span<SystemContainer> systems = Systems;
+            for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
                 system.Update(world, delta);
@@ -416,20 +416,20 @@ namespace Simulation
 
         private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta, World hostWorld)
         {
-            USpan<SystemContainer> systems = Systems;
-            uint programComponent = simulator->programComponent;
+            Span<SystemContainer> systems = Systems;
+            int programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
                 {
-                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
-                    for (uint i = 0; i < components.Length; i++)
+                    Span<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (int i = 0; i < components.Length; i++)
                     {
                         ref IsProgram program = ref components[i];
                         if (program.state == IsProgram.State.Active)
                         {
                             World programWorld = program.world;
-                            for (uint s = 0; s < systems.Length; s++)
+                            for (int s = 0; s < systems.Length; s++)
                             {
                                 ref SystemContainer container = ref systems[s];
                                 container.Update(programWorld, delta);
@@ -442,8 +442,8 @@ namespace Simulation
 
         private readonly void InitializeSystemsNotStarted(World world)
         {
-            USpan<SystemContainer> systems = Systems;
-            for (uint s = 0; s < systems.Length; s++)
+            Span<SystemContainer> systems = Systems;
+            for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer container = ref systems[s];
                 if (!container.IsInitializedWith(world))
@@ -457,20 +457,20 @@ namespace Simulation
 
         private readonly void InitializeSystemsWithProgramWorlds(World hostWorld)
         {
-            USpan<SystemContainer> systems = Systems;
-            uint programComponent = simulator->programComponent;
+            Span<SystemContainer> systems = Systems;
+            int programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
                 {
-                    USpan<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
-                    for (uint i = 0; i < components.Length; i++)
+                    Span<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (int i = 0; i < components.Length; i++)
                     {
                         ref IsProgram program = ref components[i];
                         if (program.state != IsProgram.State.Finished)
                         {
                             World programWorld = program.world;
-                            for (uint s = 0; s < systems.Length; s++)
+                            for (int s = 0; s < systems.Length; s++)
                             {
                                 ref SystemContainer container = ref systems[s];
                                 if (!container.IsInitializedWith(programWorld))
@@ -503,16 +503,16 @@ namespace Simulation
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
 
             //add message handlers
-            USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
-            uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
+            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
+            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
             Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
-                for (uint i = 0; i < messageHandlerCount; i++)
+                for (int i = 0; i < messageHandlerCount; i++)
                 {
                     MessageHandler handler = buffer[i];
                     if (handler == default)
@@ -550,16 +550,16 @@ namespace Simulation
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
 
             //add message handlers
-            USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
-            uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
+            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
+            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
             Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
-                for (uint i = 0; i < messageHandlerCount; i++)
+                for (int i = 0; i < messageHandlerCount; i++)
                 {
                     MessageHandler handler = buffer[i];
                     if (handler == default)
@@ -582,7 +582,7 @@ namespace Simulation
             return genericContainer;
         }
 
-        public readonly SystemContainer<T> InsertSystem<T>(uint index) where T : unmanaged, ISystem
+        public readonly SystemContainer<T> InsertSystem<T>(int index) where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -598,16 +598,16 @@ namespace Simulation
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
 
             //add message handlers
-            USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
-            uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
+            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
+            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
             Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
-                for (uint i = 0; i < messageHandlerCount; i++)
+                for (int i = 0; i < messageHandlerCount; i++)
                 {
                     MessageHandler handler = buffer[i];
                     if (handler == default)
@@ -630,7 +630,7 @@ namespace Simulation
             return genericContainer;
         }
 
-        public readonly SystemContainer<T> InsertSystem<T>(uint index, MemoryAddress input) where T : unmanaged, ISystem
+        public readonly SystemContainer<T> InsertSystem<T>(int index, MemoryAddress input) where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -645,16 +645,16 @@ namespace Simulation
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
 
-            MemoryAddress allocation = MemoryAddress.Allocate(staticTemplate);
+            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
 
             //add message handlers
-            USpan<MessageHandler> buffer = stackalloc MessageHandler[64];
-            uint messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
+            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
+            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
             Dictionary<TypeLayout, HandleMessage> handlers;
             if (messageHandlerCount > 0)
             {
                 handlers = new(messageHandlerCount);
-                for (uint i = 0; i < messageHandlerCount; i++)
+                for (int i = 0; i < messageHandlerCount; i++)
                 {
                     MessageHandler handler = buffer[i];
                     if (handler == default)
@@ -682,8 +682,8 @@ namespace Simulation
             MemoryAddress.ThrowIfDefault(simulator);
 
             TypeLayout otherSystemType = TypeRegistry.GetOrRegister<O>();
-            USpan<SystemContainer> systems = simulator->systems.AsSpan();
-            for (uint i = 0; i < systems.Length; i++)
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            for (int i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == otherSystemType)
@@ -701,8 +701,8 @@ namespace Simulation
             MemoryAddress.ThrowIfDefault(simulator);
 
             TypeLayout otherSystemType = TypeRegistry.GetOrRegister<O>();
-            USpan<SystemContainer> systems = simulator->systems.AsSpan();
-            for (uint i = 0; i < systems.Length; i++)
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            for (int i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == otherSystemType)
@@ -727,7 +727,7 @@ namespace Simulation
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
 
-            for (uint i = 0; i < simulator->systems.Count; i++)
+            for (int i = 0; i < simulator->systems.Count; i++)
             {
                 ref SystemContainer system = ref simulator->systems[i];
                 if (system.systemType == systemType)
@@ -750,8 +750,8 @@ namespace Simulation
             MemoryAddress.ThrowIfDefault(simulator);
 
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
-            USpan<SystemContainer> systems = simulator->systems.AsSpan();
-            for (uint i = 0; i < systems.Length; i++)
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            for (int i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
@@ -775,8 +775,8 @@ namespace Simulation
             MemoryAddress.ThrowIfDefault(simulator);
 
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
-            USpan<SystemContainer> systems = simulator->systems.AsSpan();
-            for (uint i = 0; i < systems.Length; i++)
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            for (int i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)
@@ -796,8 +796,8 @@ namespace Simulation
         public readonly void ThrowIfSystemIsMissing<T>() where T : unmanaged, ISystem
         {
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
-            USpan<SystemContainer> systems = simulator->systems.AsSpan();
-            for (uint i = 0; i < systems.Length; i++)
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            for (int i = 0; i < systems.Length; i++)
             {
                 ref SystemContainer system = ref systems[i];
                 if (system.systemType == systemType)

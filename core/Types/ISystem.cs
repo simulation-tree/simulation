@@ -1,6 +1,5 @@
 ﻿using Simulation.Functions;
 using System;
-using Unmanaged;
 using Worlds;
 
 namespace Simulation
@@ -24,7 +23,7 @@ namespace Simulation
         /// <summary>
         /// Retrieves the message handlers for this system.
         /// </summary>
-        public uint GetMessageHandlers(USpan<MessageHandler> buffer)
+        public int GetMessageHandlers(Span<MessageHandler> buffer)
         {
             return 0;
         }

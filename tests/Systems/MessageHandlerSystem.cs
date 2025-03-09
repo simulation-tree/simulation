@@ -7,7 +7,7 @@ namespace Simulation.Tests
 {
     public readonly partial struct MessageHandlerSystem : ISystem
     {
-        unsafe readonly uint ISystem.GetMessageHandlers(USpan<MessageHandler> buffer)
+        unsafe readonly int ISystem.GetMessageHandlers(Span<MessageHandler> buffer)
         {
             buffer[0] = MessageHandler.Create<ASCIIText256>(new(&ReceiveEvent));
             return 1;

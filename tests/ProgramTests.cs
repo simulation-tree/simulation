@@ -95,7 +95,7 @@ namespace Simulation.Tests
             using List<SystemContainer> updatedWorlds = new();
             using List<SystemContainer> finishedWorlds = new();
 
-            MemoryAddress input = MemoryAddress.Allocate((startedWorlds, updatedWorlds, finishedWorlds));
+            MemoryAddress input = MemoryAddress.AllocateValue((startedWorlds, updatedWorlds, finishedWorlds));
             SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
                 using (Program program = new Program<DummyProgram>(world, new(TimeSpan.FromSeconds(2))))
@@ -129,7 +129,7 @@ namespace Simulation.Tests
             using List<SystemContainer> updatedWorlds = new();
             using List<SystemContainer> finishedWorlds = new();
 
-            MemoryAddress input = MemoryAddress.Allocate((startedWorlds, updatedWorlds, finishedWorlds));
+            MemoryAddress input = MemoryAddress.AllocateValue((startedWorlds, updatedWorlds, finishedWorlds));
             SystemContainer<DummySystem> system = simulator.AddSystem<DummySystem>(input);
             {
                 using (Program program = new Program<ProgramThatUpdatesSystemsOnStart>(world))
