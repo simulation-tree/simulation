@@ -291,7 +291,7 @@ namespace Simulation
         /// </summary>
         public readonly World World => simulator.World;
 
-        private unsafe readonly ref SystemContainer Container => ref simulator.Systems[index];
+        private readonly SystemContainer Container => simulator.Systems[index];
 
         /// <summary>
         /// Initializes a new <see cref="SystemContainer{T}"/> instance with an

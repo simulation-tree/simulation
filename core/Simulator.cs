@@ -1,5 +1,4 @@
-﻿using Collections;
-using Collections.Generic;
+﻿using Collections.Generic;
 using Simulation.Components;
 using Simulation.Functions;
 using System;
@@ -44,7 +43,7 @@ namespace Simulation
         /// <summary>
         /// All active programs.
         /// </summary>
-        public readonly System.Span<ProgramContainer> Programs
+        public readonly ReadOnlySpan<ProgramContainer> Programs
         {
             get
             {
@@ -57,7 +56,7 @@ namespace Simulation
         /// <summary>
         /// All added systems.
         /// </summary>
-        public readonly System.Span<SystemContainer> Systems
+        public readonly ReadOnlySpan<SystemContainer> Systems
         {
             get
             {
@@ -200,7 +199,7 @@ namespace Simulation
 
             using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
 
             //tell host world
             for (int s = 0; s < systems.Length; s++)
@@ -229,7 +228,7 @@ namespace Simulation
 
             using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
             StatusCode statusCode;
 
             //tell host world
@@ -256,7 +255,7 @@ namespace Simulation
 
         private readonly StatusCode TryHandleMessagesWithPrograms(TypeLayout messageType, MemoryAddress messageContainer)
         {
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int p = 0; p < simulator->activePrograms.Count; p++)
             {
                 ref ProgramContainer program = ref simulator->activePrograms[p];
@@ -389,7 +388,7 @@ namespace Simulation
             World hostWorld = World;
             InitializeSystemsNotStarted(hostWorld);
 
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
@@ -406,7 +405,7 @@ namespace Simulation
         {
             InitializeSystemsNotStarted(world);
 
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer system = ref systems[s];
@@ -416,7 +415,7 @@ namespace Simulation
 
         private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta, World hostWorld)
         {
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
             int programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
@@ -442,7 +441,7 @@ namespace Simulation
 
         private readonly void InitializeSystemsNotStarted(World world)
         {
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int s = 0; s < systems.Length; s++)
             {
                 ref SystemContainer container = ref systems[s];
@@ -457,7 +456,7 @@ namespace Simulation
 
         private readonly void InitializeSystemsWithProgramWorlds(World hostWorld)
         {
-            Span<SystemContainer> systems = Systems;
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
             int programComponent = simulator->programComponent;
             foreach (Chunk chunk in hostWorld.Chunks)
             {
