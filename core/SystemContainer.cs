@@ -267,5 +267,10 @@ namespace Simulation
         {
             return container.Container;
         }
+
+        public static implicit operator T(SystemContainer<T> container)
+        {
+            return container.Value;
+        }
     }
 }

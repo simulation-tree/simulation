@@ -4,6 +4,7 @@ using Simulation.Exceptions;
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Types;
 using Unmanaged;
 using Worlds;
@@ -377,12 +378,16 @@ namespace Simulation
             }
         }
 
+        [SkipLocalsInit]
         private readonly void UpdatePrograms(World simulatorWorld, TimeSpan delta)
         {
             int programComponent = simulator->programComponent;
-            for (int p = 0; p < simulator->activePrograms.Count; p++)
+            Span<ProgramContainer> programs = simulator->activePrograms.AsSpan();
+            Span<int> finishedPrograms = stackalloc int[programs.Length];
+            int finishedProgramCount = 0;
+            for (int p = 0; p < programs.Length; p++)
             {
-                ref ProgramContainer program = ref simulator->activePrograms[p];
+                ref ProgramContainer program = ref programs[p];
                 ref IsProgram component = ref simulatorWorld.GetComponent<IsProgram>(program.entity, programComponent);
                 component.statusCode = program.update.Invoke(this, program.allocation, program.world, delta);
                 if (component.statusCode != StatusCode.Continue)
@@ -391,13 +396,20 @@ namespace Simulation
                     component.state = IsProgram.State.Finished;
                     program.finish.Invoke(this, program.allocation, program.world, component.statusCode);
 
-                    simulator->activePrograms.RemoveAt(p);
                     uint entity = program.entity;
                     ref ProgramContainer containerInMap = ref simulator->programsMap[entity];
                     ref ProgramContainer containerInList = ref simulator->programs[simulator->programs.IndexOf(containerInMap)];
                     containerInMap.state = program.state;
                     containerInList.state = program.state;
+
+                    finishedPrograms[finishedProgramCount++] = p;
                 }
+            }
+
+            for (int i = finishedProgramCount - 1; i >= 0; i--)
+            {
+                int index = finishedPrograms[i];
+                simulator->activePrograms.RemoveAt(index);
             }
         }
 
