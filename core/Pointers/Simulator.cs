@@ -14,6 +14,7 @@ namespace Simulation.Pointers
         public readonly List<ProgramContainer> programs;
         public readonly List<ProgramContainer> activePrograms;
         public readonly Dictionary<uint, ProgramContainer> programsMap;
+        public readonly HashSet<MessageHandlerGroupKey> messageHandlerGroups;
 
         internal Simulator(World world)
         {
@@ -24,6 +25,7 @@ namespace Simulation.Pointers
             programs = new(4);
             activePrograms = new(4);
             programsMap = new(4);
+            messageHandlerGroups = new(4);
         }
     }
 }

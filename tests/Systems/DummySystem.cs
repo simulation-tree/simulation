@@ -1,44 +1,50 @@
 ﻿using Collections.Generic;
 using System;
+using Unmanaged;
 using Worlds;
 
 namespace Simulation.Tests
 {
     public readonly partial struct DummySystem : ISystem
     {
-        private readonly List<SystemContainer> startedWorlds;
-        private readonly List<SystemContainer> updatedWorlds;
-        private readonly List<SystemContainer> finishedWorlds;
+        public readonly List<World> startedWorlds;
+        public readonly List<World> updatedWorlds;
+        public readonly List<World> finishedWorlds;
+        public readonly MemoryAddress disposed;
 
-        private DummySystem(List<SystemContainer> startedWorlds, List<SystemContainer> updatedWorlds, List<SystemContainer> finishedWorlds)
+        [Obsolete("Default constructor not supported", true)]
+        public DummySystem()
+        {
+            //todo: make the implementation generator create this constructor, if another
+            //public constructor exists
+        }
+
+        public DummySystem(List<World> startedWorlds, List<World> updatedWorlds, List<World> finishedWorlds, MemoryAddress disposed)
         {
             this.startedWorlds = startedWorlds;
             this.updatedWorlds = updatedWorlds;
             this.finishedWorlds = finishedWorlds;
+            this.disposed = disposed;
         }
 
-        unsafe void ISystem.Start(in SystemContainer systemContainer, in World world)
+        public readonly void Dispose()
         {
-            if (systemContainer.World == world)
-            {
-                int stride = sizeof(List<SystemContainer>);
-                List<SystemContainer> startedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 0);
-                List<SystemContainer> updatedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 1);
-                List<SystemContainer> finishedWorlds = systemContainer.Input.Read<List<SystemContainer>>(stride * 2);
-                systemContainer.Write(new DummySystem(startedWorlds, updatedWorlds, finishedWorlds));
-            }
-
-            startedWorlds.Add(systemContainer);
+            disposed.Write(true);
         }
 
-        void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
+        void ISystem.Start(in SystemContext context, in World world)
         {
-            updatedWorlds.Add(systemContainer);
+            startedWorlds.Add(world);
         }
 
-        void ISystem.Finish(in SystemContainer systemContainer, in World world)
+        void ISystem.Update(in SystemContext context, in World world, in TimeSpan delta)
         {
-            finishedWorlds.Add(systemContainer);
+            updatedWorlds.Add(world);
+        }
+
+        void ISystem.Finish(in SystemContext context, in World world)
+        {
+            finishedWorlds.Add(world);
         }
     }
 }

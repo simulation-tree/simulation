@@ -2,49 +2,110 @@
 
 [![Test](https://github.com/simulation-tree/simulation/actions/workflows/test.yml/badge.svg)](https://github.com/simulation-tree/simulation/actions/workflows/test.yml)
 
-Library implementing programs executing within a simulator.
+Library providing a way to organize systems, and executing programs.
+
+### Running simulators
+
+Simulators contain and update systems, and iterate over programs found
+in the world that the simulator is created with:
+```cs
+public static int Main()
+{
+    StatusCode statusCode;
+    using (World world = new())
+    {
+        using (Simulator simulator = new(world))
+        {
+            simulator.AddSystem<ExampleSystem>();
+            using (Program program = Program.Create(world, new ExampleProgram(100)))
+            {
+                while (!program.IsFinished(out statusCode))
+                {
+                    simulator.Update();
+                }
+                
+                Console.WriteLine(program.Read<ExampleProgram>().value);
+            }
+
+            simulator.RemoveSystem<ExampleSystem>();
+        }
+    }
+
+    return statusCode.IsSuccess ? 0 : 1;
+}
+```
+
+### Order of operations
+
+Systems take precedence over programs:
+
+**Starting and Updating**
+
+Systems will always be started before programs. Iterating first with the simulator
+world, and then with the world of each program in the order they were created.
+
+**Finishing**
+
+Same as starting/updating but flipped. Systems finish before programs are, and with
+program worlds in reverse order, then with simulator world last.
 
 ### Systems
 
-Systems are defined by implementing the `ISystem` interface, and contain
-functions for initializing, iterating, and finalizing the system with all
-worlds that the simulator is aware of.
+Systems are defined by implementing the `ISystem` interface, and are responsible
+for initializing, updating, and finalizing the system with all worlds that the
+simulator is aware of.
 
-For start and update, it will run with the simulator world first, then with program worlds.
-But on finish, it will run with program worlds first, then with the simulator world.
 ```cs
 public readonly partial struct ExampleSystem : ISystem
 {
     void ISystem.Start(in SystemContainer systemContainer, in World world)
     {
-        if (systemContainer.World == world)
-        {
-            Entity firstEntity = new(world);
-            firstEntity.AddComponent(0u);
-        }
     }
 
     void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
     {
-        if (systemContainer.World == world)
-        {
-            ref uint firstEntityValue = ref world.GetComponentRef<uint>(1);
-            firstEntityValue++;
-        }
     }
 
     void ISystem.Finish(in SystemContainer systemContainer, in World world)
     {
-        if (systemContainer.World == world)
-        {
-            ref uint firstEntityValue = ref world.GetComponentRef<uint>(1);
-            firstEntityValue *= 10;
-        }
     }
 }
 ```
-> A simulator may iterate over a system with multiple worlds, so the `systemContainer.World == world` check is necessary
-for making a branch of code that only runs once on start and finish
+
+### Initializing systems with data
+
+When systems are added to a simulator world, they are created with `default` state.
+In the case that they need to be initialized with data from the beginning, there is a way:
+```cs
+public readonly partial struct ExampleSystem : ISystem
+{
+    private readonly int initialData;
+
+    private ExampleSystem(int initialData)
+    {
+        this.initialData = initialData;
+    }
+
+    void ISystem.Start(in SystemContainer systemContainer, in World world)
+    {
+        if (systemContainer.World == world)
+        {
+            systemContainer.Write(new ExampleSystem(1337));
+            
+            //if the system isnt a readonly type
+            //ref ExampleSystem exampleSystem = ref systemContainer.Read<ExampleSystem>();
+            //exampleSystem.initialData = 1337;
+        }
+    }
+
+    ...
+}
+```
+
+The example above shows a check in the `Start` function to see if the world being started with,
+is the world of the simulator. Because this only occurs once per world, and systems update with
+simulators first, this is a safe way to initialize systems with data. By overwriting the state
+with the `Write` function or by modifying the state directly.
 
 Their default constructor is never called, so if the system type contains fields that need initialization,
 it should be done in the `Start` function:
@@ -85,23 +146,6 @@ public readonly partial struct AnotherSystem : ISystem
 }
 ```
 
-### Simulators
-
-Simulators are objects that contain and update systems as well as programs found
-within the simulator's world:
-```cs
-using (World world = new())
-{
-    using (Simulator simulator = new(world))
-    {
-        simulator.AddSystem<ExampleSystem>();
-        simulator.Update(TimeSpan.FromSeconds(1));
-        simulator.RemoveSystem<ExampleSystem>();
-    }
-}
-```
-> Removing a system isn't necessary, its just shown here for completeness
-
 ### Programs
 
 Program entities are defined by implementing the `IProgram` interface, and
@@ -141,31 +185,6 @@ public partial struct ExampleProgram : IProgram
     {
         //finalization code
     }
-}
-
-public static int Main()
-{
-    StatusCode statusCode;
-    using (World world = new())
-    {
-        using (Simulator simulator = new(world))
-        {
-            simulator.AddSystem<ExampleSystem>();
-            using (Program program = Program.Create(world, new ExampleProgram(100)))
-            {
-                while (!program.IsFinished(out statusCode))
-                {
-                    simulator.Update();
-                }
-                
-                Console.WriteLine(program.Read<ExampleProgram>().value);
-            }
-
-            simulator.RemoveSystem<ExampleSystem>();
-        }
-    }
-
-    return statusCode.IsSuccess ? 0 : 1;
 }
 ```
 

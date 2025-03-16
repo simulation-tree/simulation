@@ -26,6 +26,17 @@ namespace Simulation.Functions
             this.value = value;
         }
 #endif
+        public override string ToString()
+        {
+            if ((nint)value == default)
+            {
+                return "Default";
+            }
+            else
+            {
+                return nameof(FinishSystem);
+            }
+        }
 
         /// <summary>
         /// Calls this function.

@@ -1,5 +1,6 @@
 ﻿using Collections.Generic;
 using Simulation.Components;
+using Simulation.Exceptions;
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
@@ -73,7 +74,6 @@ namespace Simulation
         [Obsolete("Default constructor not supported", true)]
         public Simulator()
         {
-            throw new NotImplementedException();
         }
 #endif
 
@@ -120,27 +120,35 @@ namespace Simulation
 
             World hostWorld = simulator->world;
             StatusCode statusCode = StatusCode.Termination;
-            InitializeSystemsNotStarted(hostWorld);
+            StartSystemsWithWorld(hostWorld);
             FinishDestroyedPrograms(hostWorld, statusCode);
-            InitializeEachProgram(hostWorld);
+            StartPrograms(hostWorld);
             TerminateAllPrograms(hostWorld, statusCode);
 
             //dispose systems
-            List<SystemContainer> systems = simulator->systems;
-            while (systems.Count > 0) //todo: should this be a stack instead of a list?
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            for (int i = systems.Length - 1; i >= 0; i--)
             {
-                ref SystemContainer firstToRemove = ref systems[0];
-                firstToRemove.Dispose();
-                systems.RemoveAt(0);
+                SystemContainer systemContainer = systems[i];
+                if (systemContainer.parent == -1)
+                {
+                    systemContainer.Dispose();
+                }
             }
 
             //dispose programs
-            for (int i = 0; i < simulator->programs.Count; i++)
+            Span<ProgramContainer> programs = simulator->programs.AsSpan();
+            for (int i = programs.Length - 1; i >= 0; i--)
             {
-                ref ProgramContainer program = ref simulator->programs[i];
-                program.Dispose();
+                programs[i].Dispose();
             }
 
+            foreach (MessageHandlerGroupKey messageHandlerGroup in simulator->messageHandlerGroups)
+            {
+                messageHandlerGroup.Dispose();
+            }
+
+            simulator->messageHandlerGroups.Dispose();
             simulator->programsMap.Dispose();
             simulator->activePrograms.Dispose();
             simulator->programs.Dispose();
@@ -155,8 +163,8 @@ namespace Simulation
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
                 {
-                    Span<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
-                    for (int i = 0; i < programs.Length; i++)
+                    ComponentEnumerator<IsProgram> programs = chunk.GetComponents<IsProgram>(programComponent);
+                    for (int i = 0; i < programs.length; i++)
                     {
                         ref IsProgram program = ref programs[i];
                         if (program.state != IsProgram.State.Finished)
@@ -193,27 +201,7 @@ namespace Simulation
         /// <returns><see langword="default"/> if no handler was found.</returns>
         public readonly StatusCode TryHandleMessage<T>(T message) where T : unmanaged
         {
-            World hostWorld = World;
-            InitializeSystemsNotStarted(hostWorld);
-            InitializeEachProgram(hostWorld);
-
-            using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
-            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            Span<SystemContainer> systems = simulator->systems.AsSpan();
-
-            //tell host world
-            for (int s = 0; s < systems.Length; s++)
-            {
-                ref SystemContainer system = ref systems[s];
-                StatusCode statusCode = system.TryHandleMessage(hostWorld, messageType, messageContainer);
-                if (statusCode != default)
-                {
-                    return statusCode;
-                }
-            }
-
-            //tell program worlds
-            return TryHandleMessagesWithPrograms(messageType, messageContainer);
+            return TryHandleMessage(ref message);
         }
 
         /// <summary>
@@ -222,60 +210,83 @@ namespace Simulation
         /// <returns><see langword="default"/> if no handler was found.</returns>
         public readonly StatusCode TryHandleMessage<T>(ref T message) where T : unmanaged
         {
-            World hostWorld = World;
-            InitializeSystemsNotStarted(hostWorld);
-            InitializeEachProgram(hostWorld);
+            World simulatorWorld = World;
+            StartSystemsWithWorld(simulatorWorld);
+            StartPrograms(simulatorWorld);
 
             using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
-            Span<SystemContainer> systems = simulator->systems.AsSpan();
-            StatusCode statusCode;
+            StatusCode statusCode = default;
 
-            //tell host world
-            for (int s = 0; s < systems.Length; s++)
+            MessageHandlerGroupKey key = new(messageType);
+            if (simulator->messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existingKey))
             {
-                ref SystemContainer system = ref systems[s];
-                statusCode = system.TryHandleMessage(hostWorld, messageType, messageContainer);
-                if (statusCode != default)
+                Span<MessageHandler> handlers = existingKey.handlers.AsSpan();
+                Span<ProgramContainer> programs = simulator->activePrograms.AsSpan();
+                Span<SystemContainer> systems = simulator->systems.AsSpan();
+
+                //tell with simulator world first
+                for (int s = 0; s < systems.Length; s++)
                 {
-                    message = messageContainer.Read<T>();
-                    return statusCode;
+                    ref SystemContainer system = ref systems[s];
+                    for (int f = 0; f < handlers.Length; f++)
+                    {
+                        MessageHandler handler = handlers[f];
+                        if (handler.systemType == system.type)
+                        {
+                            statusCode = handler.function.Invoke(system, simulatorWorld, messageContainer);
+                            if (statusCode != default)
+                            {
+                                message = messageContainer.Read<T>();
+                                return statusCode;
+                            }
+                        }
+                    }
                 }
-            }
 
-            //tell program worlds
-            statusCode = TryHandleMessagesWithPrograms(messageType, messageContainer);
-            if (statusCode != default)
-            {
-                message = messageContainer.Read<T>();
+                //tell with program worlds second
+                for (int s = 0; s < systems.Length; s++)
+                {
+                    ref SystemContainer system = ref systems[s];
+                    for (int p = 0; p < programs.Length; p++)
+                    {
+                        ref ProgramContainer program = ref programs[p];
+                        World programWorld = program.world;
+                        for (int f = 0; f < handlers.Length; f++)
+                        {
+                            ref MessageHandler handler = ref handlers[f];
+                            if (handler.systemType == system.type)
+                            {
+                                statusCode = handler.function.Invoke(system, programWorld, messageContainer);
+                                if (statusCode != default)
+                                {
+                                    message = messageContainer.Read<T>();
+                                    return statusCode;
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             return statusCode;
         }
 
-        private readonly StatusCode TryHandleMessagesWithPrograms(TypeLayout messageType, MemoryAddress messageContainer)
+        /// <summary>
+        /// Updates all systems with the given <paramref name="world"/>.
+        /// </summary>
+        private readonly void UpdateSystemsWithWorld(World world, TimeSpan delta)
         {
             Span<SystemContainer> systems = simulator->systems.AsSpan();
-            for (int p = 0; p < simulator->activePrograms.Count; p++)
+            for (int s = 0; s < systems.Length; s++)
             {
-                ref ProgramContainer program = ref simulator->activePrograms[p];
-                World programWorld = program.world;
-                for (int s = 0; s < systems.Length; s++)
-                {
-                    ref SystemContainer system = ref systems[s];
-                    StatusCode statusCode = system.TryHandleMessage(programWorld, messageType, messageContainer);
-                    if (statusCode != default)
-                    {
-                        return statusCode;
-                    }
-                }
+                ref SystemContainer system = ref systems[s];
+                system.Update(world, delta);
             }
-
-            return default;
         }
 
         /// <summary>
-        /// Updates all systems then all programs by advancing their time.
+        /// Updates all systems, all programs by advancing their time.
         /// </summary>
         /// <returns>The delta time that was used to update with.</returns>
         public readonly TimeSpan Update()
@@ -294,36 +305,47 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Updates all systems then all programs forward by
+        /// Updates all systems, and all programs forward by
         /// <paramref name="delta"/> amount of time.
         /// </summary>
         public readonly void Update(TimeSpan delta)
         {
-            UpdateSystems(delta);
-            UpdatePrograms(delta);
+            World simulatorWorld = World;
+            FinishDestroyedPrograms(simulatorWorld, StatusCode.Termination);
+            StartSystemsWithWorld(simulatorWorld);
+            StartPrograms(simulatorWorld);
+            StartSystemsWithPrograms(simulatorWorld);
+            UpdateSystemsWithWorld(simulatorWorld, delta);
+            UpdateSystemsWithPrograms(delta, simulatorWorld);
+            UpdatePrograms(simulatorWorld, delta);
         }
 
         /// <summary>
-        /// Updates all programs forward.
+        /// Only updates the systems forward.
         /// </summary>
-        public readonly void UpdatePrograms(TimeSpan delta)
+        public readonly void UpdateSystems(TimeSpan delta)
         {
-            World hostWorld = World;
-            FinishDestroyedPrograms(hostWorld, StatusCode.Termination);
-            InitializeEachProgram(hostWorld);
-            UpdateEachProgram(hostWorld, delta);
+            World simulatorWorld = World;
+            StartSystemsWithWorld(simulatorWorld);
+            StartSystemsWithPrograms(simulatorWorld);
+            UpdateSystemsWithWorld(simulatorWorld, delta);
+            UpdateSystemsWithPrograms(delta, simulatorWorld);
         }
 
-        private readonly void InitializeEachProgram(World hostWorld)
+        /// <summary>
+        /// Initializes programs not yet started and adds them to the active
+        /// programs list.
+        /// </summary>
+        private readonly void StartPrograms(World simulatorWorld)
         {
             int programComponent = simulator->programComponent;
-            foreach (Chunk chunk in hostWorld.Chunks)
+            foreach (Chunk chunk in simulatorWorld.Chunks)
             {
                 if (chunk.Definition.ContainsComponent(programComponent))
                 {
                     ReadOnlySpan<uint> entities = chunk.Entities;
-                    Span<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
-                    for (int i = 0; i < components.Length; i++)
+                    ComponentEnumerator<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
+                    for (int i = 0; i < components.length; i++)
                     {
                         ref IsProgram program = ref components[i];
                         if (program.state == IsProgram.State.Uninitialized)
@@ -355,13 +377,13 @@ namespace Simulation
             }
         }
 
-        private readonly void UpdateEachProgram(World hostWorld, TimeSpan delta)
+        private readonly void UpdatePrograms(World simulatorWorld, TimeSpan delta)
         {
             int programComponent = simulator->programComponent;
             for (int p = 0; p < simulator->activePrograms.Count; p++)
             {
                 ref ProgramContainer program = ref simulator->activePrograms[p];
-                ref IsProgram component = ref hostWorld.GetComponent<IsProgram>(program.entity, programComponent);
+                ref IsProgram component = ref simulatorWorld.GetComponent<IsProgram>(program.entity, programComponent);
                 component.statusCode = program.update.Invoke(this, program.allocation, program.world, delta);
                 if (component.statusCode != StatusCode.Continue)
                 {
@@ -380,66 +402,43 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Updates all systems with the simulator host world first,
-        /// then all individual program worlds.
-        /// </summary>
-        public readonly void UpdateSystems(TimeSpan delta)
-        {
-            World hostWorld = World;
-            InitializeSystemsNotStarted(hostWorld);
-
-            Span<SystemContainer> systems = simulator->systems.AsSpan();
-            for (int s = 0; s < systems.Length; s++)
-            {
-                ref SystemContainer system = ref systems[s];
-                system.Update(hostWorld, delta);
-            }
-
-            UpdateSystemsWithProgramWorlds(delta, hostWorld);
-        }
-
-        /// <summary>
         /// Updates all systems only with the given <paramref name="world"/>.
         /// </summary>
         public readonly void UpdateSystems(TimeSpan delta, World world)
         {
-            InitializeSystemsNotStarted(world);
+            StartSystemsWithWorld(world);
 
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int s = 0; s < systems.Length; s++)
             {
-                ref SystemContainer system = ref systems[s];
-                system.Update(world, delta);
+                ref SystemContainer systemContainer = ref systems[s];
+                systemContainer.Update(world, delta);
             }
         }
 
-        private readonly void UpdateSystemsWithProgramWorlds(TimeSpan delta, World hostWorld)
+        private readonly void UpdateSystemsWithPrograms(TimeSpan delta, World simulatorWorld)
         {
             Span<SystemContainer> systems = simulator->systems.AsSpan();
-            int programComponent = simulator->programComponent;
-            foreach (Chunk chunk in hostWorld.Chunks)
+            Span<ProgramContainer> programs = simulator->activePrograms.AsSpan();
+            for (int s = 0; s < systems.Length; s++)
             {
-                if (chunk.Definition.ContainsComponent(programComponent))
+                ref SystemContainer systemContainer = ref systems[s];
+                for (int p = 0; p < programs.Length; p++)
                 {
-                    Span<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
-                    for (int i = 0; i < components.Length; i++)
+                    ref ProgramContainer program = ref programs[p];
+                    if (program.state != IsProgram.State.Finished)
                     {
-                        ref IsProgram program = ref components[i];
-                        if (program.state == IsProgram.State.Active)
-                        {
-                            World programWorld = program.world;
-                            for (int s = 0; s < systems.Length; s++)
-                            {
-                                ref SystemContainer container = ref systems[s];
-                                container.Update(programWorld, delta);
-                            }
-                        }
+                        World programWorld = program.world;
+                        systemContainer.Update(programWorld, delta);
                     }
                 }
             }
         }
 
-        private readonly void InitializeSystemsNotStarted(World world)
+        /// <summary>
+        /// Starts all systems with the given <paramref name="world"/>.
+        /// </summary>
+        private readonly void StartSystemsWithWorld(World world)
         {
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int s = 0; s < systems.Length; s++)
@@ -450,33 +449,24 @@ namespace Simulation
                     container.Start(world);
                 }
             }
-
-            InitializeSystemsWithProgramWorlds(world);
         }
 
-        private readonly void InitializeSystemsWithProgramWorlds(World hostWorld)
+        private readonly void StartSystemsWithPrograms(World simulatorWorld)
         {
             Span<SystemContainer> systems = simulator->systems.AsSpan();
-            int programComponent = simulator->programComponent;
-            foreach (Chunk chunk in hostWorld.Chunks)
+            Span<ProgramContainer> programs = simulator->activePrograms.AsSpan();
+            for (int s = 0; s < systems.Length; s++)
             {
-                if (chunk.Definition.ContainsComponent(programComponent))
+                ref SystemContainer container = ref systems[s];
+                for (int p = 0; p < programs.Length; p++)
                 {
-                    Span<IsProgram> components = chunk.GetComponents<IsProgram>(programComponent);
-                    for (int i = 0; i < components.Length; i++)
+                    ref ProgramContainer program = ref programs[p];
+                    if (program.state != IsProgram.State.Finished)
                     {
-                        ref IsProgram program = ref components[i];
-                        if (program.state != IsProgram.State.Finished)
+                        World programWorld = program.world;
+                        if (!container.IsInitializedWith(programWorld))
                         {
-                            World programWorld = program.world;
-                            for (int s = 0; s < systems.Length; s++)
-                            {
-                                ref SystemContainer container = ref systems[s];
-                                if (!container.IsInitializedWith(programWorld))
-                                {
-                                    container.Start(programWorld);
-                                }
-                            }
+                            container.Start(programWorld);
                         }
                     }
                 }
@@ -486,197 +476,59 @@ namespace Simulation
         /// <summary>
         /// Adds a system to the simulator without initializing it.
         /// </summary>
-        public readonly SystemContainer<T> AddSystem<T>() where T : unmanaged, ISystem
+        internal readonly SystemContainer<T> AddSystem<T>(T system, int parent) where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
-            T staticTemplate = default;
-            (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
-            if (start == default || update == default || finish == default)
+            (StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose) = system.Functions;
+            if (start == default || update == default || finish == default || dispose == default)
             {
-                throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
+                throw new SystemMissingFunctionsException(typeof(T), start, update, finish, dispose);
             }
 
-            World hostWorld = simulator->world;
+            World simulatorWorld = simulator->world;
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
-            Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
+            Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
-            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
-
-            //add message handlers
-            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
-            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<TypeLayout, HandleMessage> handlers;
-            if (messageHandlerCount > 0)
-            {
-                handlers = new(messageHandlerCount);
-                for (int i = 0; i < messageHandlerCount; i++)
-                {
-                    MessageHandler handler = buffer[i];
-                    if (handler == default)
-                    {
-                        throw new InvalidOperationException($"Message handler at index {i} is uninitialized in system `{typeof(T)}`");
-                    }
-
-                    handlers.Add(handler.messageType, handler.function);
-                }
-            }
-            else
-            {
-                handlers = new(1);
-            }
-
-            SystemContainer container = new(new(simulator), allocation, emptyInput, systemType, handlers, start, update, finish);
-            simulator->systems.Add(container);
-            SystemContainer<T> genericContainer = new(new(simulator), simulator->systems.Count - 1, container.systemType);
-            container.Start(hostWorld);
-            return genericContainer;
+            system.CollectMessageHandlers(new(systemType, simulator->messageHandlerGroups));
+            MemoryAddress systemAllocation = MemoryAddress.AllocateValue(system);
+            SystemContainer systemContainer = new(simulator->systems.Count, parent, this, systemAllocation, systemType, start, update, finish, dispose);
+            simulator->systems.Add(systemContainer);
+            systemContainer.Start(simulatorWorld);
+            return systemContainer.As<T>();
         }
 
-        public readonly SystemContainer<T> AddSystem<T>(MemoryAddress input) where T : unmanaged, ISystem
+        /// <summary>
+        /// Adds a system to the simulator without initializing it.
+        /// </summary>
+        public readonly SystemContainer<T> AddSystem<T>(T system) where T : unmanaged, ISystem
+        {
+            return AddSystem(system, -1);
+        }
+
+        public readonly SystemContainer<T> InsertSystem<T>(int index, T system = default) where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            T staticTemplate = default;
-            (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
-            if (start == default || update == default || finish == default)
+            (StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose) = system.Functions;
+            if (start == default || update == default || finish == default || dispose == default)
             {
-                throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
+                throw new SystemMissingFunctionsException(typeof(T), start, update, finish, dispose);
             }
 
-            World hostWorld = simulator->world;
+            World simulatorWorld = simulator->world;
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
-            Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
+            Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
-            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
-
-            //add message handlers
-            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
-            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<TypeLayout, HandleMessage> handlers;
-            if (messageHandlerCount > 0)
-            {
-                handlers = new(messageHandlerCount);
-                for (int i = 0; i < messageHandlerCount; i++)
-                {
-                    MessageHandler handler = buffer[i];
-                    if (handler == default)
-                    {
-                        throw new InvalidOperationException($"Message handler at index {i} is uninitialized in system `{typeof(T)}`");
-                    }
-
-                    handlers.Add(handler.messageType, handler.function);
-                }
-            }
-            else
-            {
-                handlers = new(1);
-            }
-
-            SystemContainer container = new(new(simulator), allocation, input, systemType, handlers, start, update, finish);
-            simulator->systems.Add(container);
-            SystemContainer<T> genericContainer = new(new(simulator), simulator->systems.Count - 1, container.systemType);
-            container.Start(hostWorld);
-            return genericContainer;
+            system.CollectMessageHandlers(new(systemType, simulator->messageHandlerGroups));
+            MemoryAddress systemAllocation = MemoryAddress.AllocateValue(system);
+            SystemContainer systemContainer = new(index, -1, this, systemAllocation, systemType, start, update, finish, dispose);
+            simulator->systems.Insert(index, systemContainer);
+            systemContainer.Start(simulatorWorld);
+            return systemContainer.As<T>();
         }
 
-        public readonly SystemContainer<T> InsertSystem<T>(int index) where T : unmanaged, ISystem
-        {
-            MemoryAddress.ThrowIfDefault(simulator);
-
-            MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
-            T staticTemplate = default;
-            (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
-            if (start == default || update == default || finish == default)
-            {
-                throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
-            }
-
-            World hostWorld = simulator->world;
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
-            Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
-
-            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
-
-            //add message handlers
-            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
-            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<TypeLayout, HandleMessage> handlers;
-            if (messageHandlerCount > 0)
-            {
-                handlers = new(messageHandlerCount);
-                for (int i = 0; i < messageHandlerCount; i++)
-                {
-                    MessageHandler handler = buffer[i];
-                    if (handler == default)
-                    {
-                        throw new InvalidOperationException($"Message handler at index {i} is uninitialized in system `{typeof(T)}`");
-                    }
-
-                    handlers.Add(handler.messageType, handler.function);
-                }
-            }
-            else
-            {
-                handlers = new(1);
-            }
-
-            SystemContainer container = new(new(simulator), allocation, emptyInput, systemType, handlers, start, update, finish);
-            simulator->systems.Insert(index, container);
-            SystemContainer<T> genericContainer = new(new(simulator), index, container.systemType);
-            container.Start(hostWorld);
-            return genericContainer;
-        }
-
-        public readonly SystemContainer<T> InsertSystem<T>(int index, MemoryAddress input) where T : unmanaged, ISystem
-        {
-            MemoryAddress.ThrowIfDefault(simulator);
-
-            T staticTemplate = default;
-            (StartSystem start, UpdateSystem update, FinishSystem finish) = staticTemplate.Functions;
-            if (start == default || update == default || finish == default)
-            {
-                throw new InvalidOperationException($"System `{typeof(T)}` is missing one or more required functions");
-            }
-
-            World hostWorld = simulator->world;
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
-            Trace.WriteLine($"Adding system `{typeof(T)}` to `{hostWorld}`");
-
-            MemoryAddress allocation = MemoryAddress.AllocateValue(staticTemplate);
-
-            //add message handlers
-            Span<MessageHandler> buffer = stackalloc MessageHandler[64];
-            int messageHandlerCount = staticTemplate.GetMessageHandlers(buffer);
-            Dictionary<TypeLayout, HandleMessage> handlers;
-            if (messageHandlerCount > 0)
-            {
-                handlers = new(messageHandlerCount);
-                for (int i = 0; i < messageHandlerCount; i++)
-                {
-                    MessageHandler handler = buffer[i];
-                    if (handler == default)
-                    {
-                        throw new InvalidOperationException($"Message handler at index {i} is uninitialized in system `{typeof(T)}`");
-                    }
-
-                    handlers.Add(handler.messageType, handler.function);
-                }
-            }
-            else
-            {
-                handlers = new(1);
-            }
-
-            SystemContainer container = new(new(simulator), allocation, input, systemType, handlers, start, update, finish);
-            simulator->systems.Insert(index, container);
-            SystemContainer<T> genericContainer = new(new(simulator), index, container.systemType);
-            container.Start(hostWorld);
-            return genericContainer;
-        }
-
-        public readonly SystemContainer<T> AddSystemBefore<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
+        public readonly SystemContainer<T> AddSystemBefore<T, O>(T system = default) where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -684,18 +536,17 @@ namespace Simulation
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
-                ref SystemContainer system = ref systems[i];
-                if (system.systemType == otherSystemType)
+                ref SystemContainer systemContainer = ref systems[i];
+                if (systemContainer.type == otherSystemType)
                 {
-                    MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
-                    return InsertSystem<T>(i, emptyInput);
+                    return InsertSystem(i, system);
                 }
             }
 
             throw new InvalidOperationException($"System `{typeof(O)}` is not registered in the simulator");
         }
 
-        public readonly SystemContainer<T> AddSystemAfter<T, O>() where T : unmanaged, ISystem where O : unmanaged, ISystem
+        public readonly SystemContainer<T> AddSystemAfter<T, O>(T system = default) where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -703,11 +554,10 @@ namespace Simulation
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
-                ref SystemContainer system = ref systems[i];
-                if (system.systemType == otherSystemType)
+                ref SystemContainer systemContainer = ref systems[i];
+                if (systemContainer.type == otherSystemType)
                 {
-                    MemoryAddress emptyInput = MemoryAddress.AllocateEmpty();
-                    return InsertSystem<T>(i + 1, emptyInput);
+                    return InsertSystem(i + 1, system);
                 }
             }
 
@@ -715,9 +565,9 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Removes a system from the simulator.
+        /// Removes a system from the simulator and disposes it.
         /// </summary>
-        public readonly void RemoveSystem<T>(bool dispose = true) where T : unmanaged, ISystem
+        public readonly void RemoveSystem<T>() where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
             ThrowIfSystemIsMissing<T>();
@@ -726,17 +576,16 @@ namespace Simulation
             TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
             Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
 
-            for (int i = 0; i < simulator->systems.Count; i++)
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            for (int i = 0; i < systems.Length; i++)
             {
-                ref SystemContainer system = ref simulator->systems[i];
-                if (system.systemType == systemType)
+                ref SystemContainer systemContainer = ref systems[i];
+                if (systemContainer.type == systemType)
                 {
-                    if (dispose)
-                    {
-                        system.Dispose();
-                    }
-
+                    T removed = systemContainer.Read<T>();
+                    systemContainer.Dispose();
                     simulator->systems.RemoveAt(i);
+                    return;
                 }
             }
         }
@@ -752,8 +601,8 @@ namespace Simulation
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
-                ref SystemContainer system = ref systems[i];
-                if (system.systemType == systemType)
+                ref SystemContainer systemContainer = ref systems[i];
+                if (systemContainer.type == systemType)
                 {
                     return true;
                 }
@@ -777,10 +626,10 @@ namespace Simulation
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
-                ref SystemContainer system = ref systems[i];
-                if (system.systemType == systemType)
+                ref SystemContainer systemContainer = ref systems[i];
+                if (systemContainer.type == systemType)
                 {
-                    return new(this, i, system.systemType);
+                    return new(this, i, systemContainer.type);
                 }
             }
 
@@ -798,8 +647,8 @@ namespace Simulation
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
-                ref SystemContainer system = ref systems[i];
-                if (system.systemType == systemType)
+                ref SystemContainer systemContainer = ref systems[i];
+                if (systemContainer.type == systemType)
                 {
                     return;
                 }

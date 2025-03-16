@@ -74,6 +74,16 @@ namespace Simulation
                 destination[length++] = ' ';
                 length += code.ToString(destination.Slice(length));
             }
+            else if (value == 0)
+            {
+                destination[length++] = 'D';
+                destination[length++] = 'e';
+                destination[length++] = 'f';
+                destination[length++] = 'a';
+                destination[length++] = 'u';
+                destination[length++] = 'l';
+                destination[length++] = 't';
+            }
             else
             {
                 destination[length++] = 'C';

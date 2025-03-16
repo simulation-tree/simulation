@@ -1,7 +1,6 @@
 ﻿using Simulation.Functions;
 using System;
 using Types;
-using Unmanaged;
 
 namespace Simulation
 {
@@ -11,9 +10,9 @@ namespace Simulation
     public readonly struct MessageHandler : IEquatable<MessageHandler>
     {
         /// <summary>
-        /// The type of message to handle.
+        /// The system that registered this handler.
         /// </summary>
-        public readonly TypeLayout messageType;
+        public readonly TypeLayout systemType;
 
         /// <summary>
         /// The function for handling.
@@ -23,14 +22,14 @@ namespace Simulation
         /// <summary>
         /// The <see cref="Type"/> of message to handle.
         /// </summary>
-        public readonly Type MessageType => messageType.SystemType;
+        public readonly Type SystemType => systemType.SystemType;
 
         /// <summary>
         /// Creates a new instance of the <see cref="MessageHandler"/> struct.
         /// </summary>
-        public MessageHandler(TypeLayout messageType, HandleMessage function)
+        public MessageHandler(TypeLayout systemType, HandleMessage function)
         {
-            this.messageType = messageType;
+            this.systemType = systemType;
             this.function = function;
         }
 
@@ -39,21 +38,15 @@ namespace Simulation
         /// </summary>
         public readonly int ToString(Span<char> destination)
         {
-            string name = MessageType.Name;
-            for (int i = 0; i < name.Length; i++)
-            {
-                destination[i] = name[i];
-            }
-
+            string name = SystemType.Name;
+            name.AsSpan().CopyTo(destination);
             return name.Length;
         }
 
         /// <inheritdoc/>
         public readonly override string ToString()
         {
-            Span<char> buffer = stackalloc char[256];
-            int length = ToString(buffer);
-            return buffer.Slice(0, length).ToString();
+            return SystemType.ToString();
         }
 
         /// <inheritdoc/>
@@ -65,13 +58,19 @@ namespace Simulation
         /// <inheritdoc/>
         public readonly bool Equals(MessageHandler other)
         {
-            return messageType.Equals(other.messageType) && function.Equals(other.function);
+            return systemType.Equals(other.systemType) && function.Equals(other.function);
         }
 
         /// <inheritdoc/>
         public readonly override int GetHashCode()
         {
-            return HashCode.Combine(messageType, function);
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 23 + systemType.GetHashCode();
+                hash = hash * 23 + function.GetHashCode();
+                return hash;
+            }
         }
 
         /// <summary>

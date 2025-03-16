@@ -1,7 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Simulation.Generator
+namespace Simulation
 {
     public class ProgramInput : Input
     {

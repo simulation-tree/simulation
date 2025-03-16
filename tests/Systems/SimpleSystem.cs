@@ -5,44 +5,47 @@ namespace Simulation.Tests
 {
     public readonly partial struct SimpleSystem : ISystem
     {
-        private readonly uint value;
+        private readonly int initialData;
 
-        private SimpleSystem(uint value)
+        [Obsolete("Default constructor not supported", true)]
+        public SimpleSystem()
         {
-            this.value = value;
         }
 
-        void ISystem.Start(in SystemContainer systemContainer, in World world)
+        public SimpleSystem(int initialData)
         {
-            if (systemContainer.World == world)
-            {
-                systemContainer.Write(new SimpleSystem(4));
+            this.initialData = initialData;
+        }
 
-                Entity entity = new(systemContainer.World);
-                entity.AddComponent(value);
+        readonly void IDisposable.Dispose()
+        {
+        }
+
+        void ISystem.Start(in SystemContext context, in World world)
+        {
+            if (context.World == world)
+            {
+                Entity entity = new(world); //1
+                entity.AddComponent(initialData);
             }
         }
 
-        void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
+        void ISystem.Update(in SystemContext context, in World world, in TimeSpan delta)
         {
-            if (systemContainer.World == world)
+            if (context.World == world)
             {
-                Entity entity = new(systemContainer.World);
+                Entity entity = new(world); //2
                 entity.AddComponent(false);
             }
         }
 
-        void ISystem.Finish(in SystemContainer systemContainer, in World world)
+        void ISystem.Finish(in SystemContext context, in World world)
         {
-            if (systemContainer.World == world)
+            if (context.World == world)
             {
-                Entity entity = new(systemContainer.World, 2);
+                Entity entity = new(world, 2);
                 entity.SetComponent(true);
             }
-        }
-
-        public readonly void Dispose()
-        {
         }
     }
 }

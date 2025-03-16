@@ -1,14 +1,17 @@
 ﻿using Collections.Generic;
 using System;
-using Unmanaged;
 using Worlds;
 
 namespace Simulation.Tests
 {
-    public partial struct DummyProgram : IProgram
+    public partial struct DummyProgram : IProgram<DummyProgram>
     {
-        private readonly List<SystemContainer> systems;
-        private TimeSpan time;
+        private readonly List<World> startedWorlds;
+        private readonly int limit;
+        private StatusCode exitCode;
+        private int iteration;
+
+        public readonly StatusCode ExitCode => exitCode;
 
         [Obsolete("Default constructor not supported", true)]
         public DummyProgram()
@@ -16,30 +19,33 @@ namespace Simulation.Tests
             throw new NotSupportedException();
         }
 
-        public DummyProgram(TimeSpan duration)
+        public DummyProgram(int limit, List<World> startedWorlds)
         {
-            systems = new();
-            time = duration;
+            this.limit = limit;
+            this.startedWorlds = startedWorlds;
         }
 
-        void IProgram.Finish(in StatusCode statusCode)
+        void IProgram<DummyProgram>.Finish(in StatusCode statusCode)
         {
-            systems.Dispose();
+            exitCode = statusCode;
         }
 
-        void IProgram.Start(in Simulator simulator, in MemoryAddress allocation, in World world)
+        readonly void IProgram<DummyProgram>.Start(ref DummyProgram program, in Simulator simulator, in World world)
         {
+            startedWorlds.Add(world);
         }
 
-        StatusCode IProgram.Update(in TimeSpan delta)
+        StatusCode IProgram<DummyProgram>.Update(in TimeSpan delta)
         {
-            time -= delta;
-            if (time.TotalSeconds <= 0)
+            iteration++;
+            if (iteration >= limit)
             {
                 return StatusCode.Success(0);
             }
-
-            return StatusCode.Continue;
+            else
+            {
+                return StatusCode.Continue;
+            }
         }
     }
 }

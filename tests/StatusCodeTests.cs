@@ -41,21 +41,22 @@ namespace Simulation.Tests
         [Test]
         public void DefaultNotTheSame()
         {
-            StatusCode a = default;
-            StatusCode b = StatusCode.Continue;
-            StatusCode c = StatusCode.Success(0);
-            StatusCode d = StatusCode.Failure(0);
+            StatusCode defaultCode = default;
+            StatusCode continueCode = StatusCode.Continue;
+            StatusCode success = StatusCode.Success(0);
+            StatusCode failure = StatusCode.Failure(0);
 
-            Assert.That(a, Is.Not.EqualTo(b));
-            Assert.That(a, Is.Not.EqualTo(c));
-            Assert.That(a, Is.Not.EqualTo(d));
-            Assert.That(b, Is.Not.EqualTo(c));
-            Assert.That(b, Is.Not.EqualTo(d));
+            Assert.That(defaultCode, Is.Not.EqualTo(continueCode));
+            Assert.That(continueCode, Is.Not.EqualTo(defaultCode));
+            Assert.That(defaultCode, Is.Not.EqualTo(success));
+            Assert.That(defaultCode, Is.Not.EqualTo(failure));
+            Assert.That(continueCode, Is.Not.EqualTo(success));
+            Assert.That(continueCode, Is.Not.EqualTo(failure));
 
-            Assert.That(StatusCode.Termination, Is.Not.EqualTo(a));
-            Assert.That(StatusCode.Termination, Is.Not.EqualTo(b));
-            Assert.That(StatusCode.Termination, Is.Not.EqualTo(c));
-            Assert.That(StatusCode.Termination, Is.Not.EqualTo(d));
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(defaultCode));
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(continueCode));
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(success));
+            Assert.That(StatusCode.Termination, Is.Not.EqualTo(failure));
         }
 
 #if DEBUG

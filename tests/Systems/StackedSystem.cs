@@ -5,23 +5,27 @@ namespace Simulation.Tests
 {
     public readonly partial struct StackedSystem : ISystem
     {
-        void ISystem.Start(in SystemContainer systemContainer, in World world)
+        public readonly void Dispose()
         {
-            if (systemContainer.World == world)
+        }
+
+        void ISystem.Start(in SystemContext context, in World world)
+        {
+            if (context.World == world)
             {
-                systemContainer.simulator.AddSystem<SimpleSystem>();
+                context.AddSystem(new SimpleSystem(4));
             }
         }
 
-        void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
+        void ISystem.Update(in SystemContext context, in World world, in TimeSpan delta)
         {
         }
 
-        void ISystem.Finish(in SystemContainer systemContainer, in World world)
+        void ISystem.Finish(in SystemContext context, in World world)
         {
-            if (systemContainer.World == world)
+            if (context.World == world)
             {
-                systemContainer.simulator.RemoveSystem<SimpleSystem>();
+                context.RemoveSystem<SimpleSystem>();
             }
         }
     }

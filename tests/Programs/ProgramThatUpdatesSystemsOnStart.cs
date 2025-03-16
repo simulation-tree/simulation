@@ -1,27 +1,26 @@
 ﻿using System;
-using Unmanaged;
 using Worlds;
 
 namespace Simulation.Tests
 {
-    public partial struct ProgramThatUpdatesSystemsOnStart : IProgram
+    public partial struct ProgramThatUpdatesSystemsOnStart : IProgram<ProgramThatUpdatesSystemsOnStart>
     {
         private ProgramThatUpdatesSystemsOnStart(Simulator simulator)
         {
             simulator.UpdateSystems(TimeSpan.MinValue);
         }
 
-        void IProgram.Start(in Simulator simulator, in MemoryAddress allocation, in World world)
+        readonly void IProgram<ProgramThatUpdatesSystemsOnStart>.Start(ref ProgramThatUpdatesSystemsOnStart program, in Simulator simulator, in World world)
         {
-            allocation.Write(new ProgramThatUpdatesSystemsOnStart(simulator));
+            program = new(simulator);
         }
 
-        StatusCode IProgram.Update(in TimeSpan delta)
+        readonly StatusCode IProgram<ProgramThatUpdatesSystemsOnStart>.Update(in TimeSpan delta)
         {
             return StatusCode.Success(0);
         }
 
-        void IProgram.Finish(in StatusCode statusCode)
+        readonly void IProgram<ProgramThatUpdatesSystemsOnStart>.Finish(in StatusCode statusCode)
         {
         }
     }

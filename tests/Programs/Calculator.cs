@@ -4,30 +4,35 @@ using Worlds;
 
 namespace Simulation.Tests
 {
-    public partial struct Calculator : IProgram
+    public partial struct Calculator : IProgram<Calculator>
     {
-        public byte value;
-        public byte limit;
-        public byte additive;
+        public int value;
         public ASCIIText256 text;
 
+        public readonly int limit;
+        public readonly int additive;
         private readonly World world;
 
-        private Calculator(World world)
+        private Calculator(World world, int limit, int additive)
         {
+            this.limit = limit;
+            this.additive = additive;
             this.world = world;
         }
 
-        readonly void IProgram.Start(in Simulator simulator, in MemoryAddress allocation, in World world)
+        public Calculator(int limit, int additive)
         {
-            Calculator calculator = new(world);
-            calculator.limit = 4;
-            calculator.additive = 2;
-            calculator.text = "Not Running";
-            allocation.Write(calculator);
+            this.limit = limit;
+            this.additive = additive;
         }
 
-        StatusCode IProgram.Update(in TimeSpan delta)
+        readonly void IProgram<Calculator>.Start(ref Calculator calculator, in Simulator simulator, in World world)
+        {
+            calculator = new(world, calculator.limit, calculator.additive);
+            calculator.text = "Not running";
+        }
+
+        StatusCode IProgram<Calculator>.Update(in TimeSpan delta)
         {
             value += additive;
             text = "Running";
@@ -45,7 +50,7 @@ namespace Simulation.Tests
             }
         }
 
-        void IProgram.Finish(in StatusCode statusCode)
+        void IProgram<Calculator>.Finish(in StatusCode statusCode)
         {
             Span<char> buffer = stackalloc char[64];
             int length = statusCode.ToString(buffer);

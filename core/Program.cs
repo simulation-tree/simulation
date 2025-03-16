@@ -121,7 +121,7 @@ namespace Simulation
         public Program(World world, T program)
         {
             ushort typeSize = (ushort)sizeof(T);
-            (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
+            (StartProgram start, UpdateProgram update, FinishProgram finish) = program.Functions;
             MemoryAddress allocation = MemoryAddress.AllocateValue(program);
             this.program = new(world, start, update, finish, typeSize, allocation);
         }
@@ -130,7 +130,7 @@ namespace Simulation
         {
             T program = new();
             ushort typeSize = (ushort)sizeof(T);
-            (StartProgram start, UpdateProgram update, FinishProgram finish) = program.GetFunctions();
+            (StartProgram start, UpdateProgram update, FinishProgram finish) = program.Functions;
             MemoryAddress allocation = MemoryAddress.AllocateValue(program);
             this.program = new(world, start, update, finish, typeSize, allocation);
         }

@@ -8,28 +8,28 @@ namespace Simulation.Tests
         [Test]
         public void SimpleTest()
         {
-            using (World hostWorld = CreateWorld())
+            using (World simulatorWorld = CreateWorld())
             {
-                using (Simulator simulator = new(hostWorld))
+                using (Simulator simulator = new(simulatorWorld))
                 {
-                    simulator.AddSystem<SimpleSystem>();
+                    simulator.AddSystem(new SimpleSystem(4));
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
                     simulator.Update();
 
-                    Assert.That(hostWorld.Count, Is.EqualTo(2));
+                    Assert.That(simulatorWorld.Count, Is.EqualTo(2));
 
-                    Entity firstEntity = new(hostWorld, 1);
-                    Assert.That(firstEntity.GetComponent<uint>(), Is.EqualTo(4));
+                    Entity firstEntity = new(simulatorWorld, 1);
+                    Assert.That(firstEntity.GetComponent<int>(), Is.EqualTo(4));
 
-                    Entity beforeFinalizeEntity = new(hostWorld, 2);
+                    Entity beforeFinalizeEntity = new(simulatorWorld, 2);
                     Assert.That(beforeFinalizeEntity.GetComponent<bool>(), Is.EqualTo(false));
 
                     simulator.RemoveSystem<SimpleSystem>();
                 }
 
-                Entity secondEntity = new(hostWorld, 2);
+                Entity secondEntity = new(simulatorWorld, 2);
                 Assert.That(secondEntity.GetComponent<bool>(), Is.EqualTo(true));
             }
         }
@@ -41,7 +41,7 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(world))
                 {
-                    simulator.AddSystem<MessageHandlerSystem>();
+                    simulator.AddSystem(new MessageHandlerSystem());
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
@@ -68,7 +68,7 @@ namespace Simulation.Tests
             {
                 using (Simulator simulator = new(world))
                 {
-                    simulator.AddSystem<StackedSystem>();
+                    simulator.AddSystem(new StackedSystem());
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(2));
 
@@ -78,7 +78,7 @@ namespace Simulation.Tests
                     Assert.That(world.Count, Is.EqualTo(2));
 
                     Entity firstEntity = new(world, 1);
-                    Assert.That(firstEntity.GetComponent<uint>(), Is.EqualTo(4));
+                    Assert.That(firstEntity.GetComponent<int>(), Is.EqualTo(4));
 
                     Entity beforeFinalizeEntity = new(world, 2);
                     Assert.That(beforeFinalizeEntity.GetComponent<bool>(), Is.EqualTo(false));
@@ -94,13 +94,13 @@ namespace Simulation.Tests
         }
 
         [Test, CancelAfter(1000)]
-        public void SystemDisposesWhenSimulatorIs()
+        public void SystemDisposesWhenSimulatorIsInCorrectOrder()
         {
             using (World world = CreateWorld())
             {
                 using (Simulator simulator = new(world))
                 {
-                    simulator.AddSystem<StackedSystem>();
+                    simulator.AddSystem(new StackedSystem());
 
                     Assert.That(simulator.Systems.Length, Is.EqualTo(2));
 

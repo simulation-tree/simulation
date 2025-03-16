@@ -7,12 +7,17 @@ namespace Simulation
     /// <summary>
     /// Describes a system type added to <see cref="Simulator"/> instances.
     /// <para>
-    /// Initialized to a default state. Use the <c>Start</c> function to initialize.
+    /// Always initialized with <see langword="default"/> state.
+    /// Use the <see cref="Start(in SystemContainer, in World)"/>
+    /// function to initialize with a custom state.
     /// </para>
     /// </summary>
-    public interface ISystem
+    public interface ISystem : IDisposable
     {
-        public (StartSystem start, UpdateSystem update, FinishSystem finish) Functions
+        /// <summary>
+        /// Exposes function pointers for a <see cref="Simulator"/> to use.
+        /// </summary>
+        public (StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose) Functions
         {
             get
             {
@@ -21,29 +26,38 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Retrieves the message handlers for this system.
+        /// Collects all message handling functions.
         /// </summary>
-        public int GetMessageHandlers(Span<MessageHandler> buffer)
+        public void CollectMessageHandlers(MessageHandlerCollector collector)
         {
-            return 0;
         }
 
         /// <summary>
-        /// Called to notify that the system has been initialized. First with the
-        /// simulator <see cref="World"/>, and then with each program <see cref="World"/>.
+        /// Called to notify that the system has been started.
+        /// <para>
+        /// The <paramref name="world"/> will be the <paramref name="collector"/>'s world first,
+        /// and then with each program in the order they were added.
+        /// </para>
         /// </summary>
-        void Start(in SystemContainer systemContainer, in World world);
+        void Start(in SystemContext context, in World world);
 
         /// <summary>
-        /// Called when the simulator updates the simulation forward. 
-        /// First with the simulator <see cref="World"/>, and then with each program <see cref="World"/>.
+        /// Called when the simulator updates the simulation forward.
+        /// <para>
+        /// The <paramref name="world"/> will be the <paramref name="collector"/>'s world first,
+        /// and then with each program in the order they were added.
+        /// </para>
         /// </summary>
-        void Update(in SystemContainer systemContainer, in World world, in TimeSpan delta);
+        void Update(in SystemContext context, in World world, in TimeSpan delta);
 
         /// <summary>
-        /// Called after the system has been removed from the <see cref="Simulator"/>,
-        /// or when it was disposed. In the reverse order that the system started.
+        /// Called after the system has been removed from the simulation, or when
+        /// the <see cref="Simulator"/> has been disposed.
+        /// <para>
+        /// The <paramref name="world"/> will be with each program in the reverse added
+        /// order, and then with the <paramref name="collector"/>'s world last.
+        /// </para>
         /// </summary>
-        void Finish(in SystemContainer systemContainer, in World world);
+        void Finish(in SystemContext context, in World world);
     }
 }

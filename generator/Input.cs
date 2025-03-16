@@ -1,13 +1,13 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace Simulation.Generator
+namespace Simulation
 {
     public abstract class Input
     {
         public readonly TypeDeclarationSyntax typeDeclaration;
         public readonly ITypeSymbol typeSymbol;
-        public readonly string containingNamespace;
+        public readonly string? containingNamespace;
         public readonly string typeName;
         public readonly string fullTypeName;
 
@@ -15,7 +15,15 @@ namespace Simulation.Generator
         {
             this.typeDeclaration = typeDeclaration;
             this.typeSymbol = typeSymbol;
-            containingNamespace = typeSymbol.ContainingNamespace.ToDisplayString();
+            if (!typeSymbol.ContainingNamespace.IsGlobalNamespace)
+            {
+                containingNamespace = typeSymbol.ContainingNamespace.ToDisplayString();
+            }
+            else
+            {
+                containingNamespace = null;
+            }
+
             typeName = typeSymbol.Name;
             fullTypeName = typeSymbol.ToDisplayString();
         }

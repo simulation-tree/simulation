@@ -1,13 +1,12 @@
 ﻿using Simulation.Functions;
 using System;
-using Unmanaged;
 using Worlds;
 
 namespace Simulation
 {
     /// <summary>
-    /// Managed by a <see cref="Simulator"/> after all <see cref="ISystem"/> performed
-    /// their behaviour.
+    /// Managed by a <see cref="Simulator"/> after all 
+    /// <see cref="ISystem"/>s performed their behaviour.
     /// </summary>
     public interface IProgram
     {
@@ -18,26 +17,16 @@ namespace Simulation
                 return default;
             }
         }
+    }
 
-        /// <summary>
-        /// Initializes the program with its own program <see cref="World"/> instance.
-        /// After all systems have been started.
-        /// </summary>
-        void Start(in Simulator simulator, in MemoryAddress allocation, in World world);
-
-        /// <summary>
-        /// Updates the program forward with the <see cref="World"/> that it was initialized with.
-        /// After systems have updated.
-        /// </summary>
+    /// <summary>
+    /// Managed by a <see cref="Simulator"/> after all 
+    /// <see cref="ISystem"/>s performed their behaviour.
+    /// </summary>
+    public interface IProgram<T> : IProgram where T : unmanaged, IProgram
+    {
+        void Start(ref T program, in Simulator simulator, in World world);
         StatusCode Update(in TimeSpan delta);
-
-        /// <summary>
-        /// Finishes the program with the <see cref="World"/> that it was initialized with.
-        /// <para>
-        /// The <paramref name="statusCode"/> will be <see cref="StatusCode.Termination"/> if the 
-        /// program exited without its control.
-        /// </para>
-        /// </summary>
         void Finish(in StatusCode statusCode);
     }
 }

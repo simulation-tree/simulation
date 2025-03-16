@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Simulation.Functions;
+using System;
 using System.Runtime.InteropServices;
 using Unmanaged;
 using Worlds;
@@ -7,38 +8,37 @@ namespace Simulation.Tests
 {
     public readonly partial struct MessageHandlerSystem : ISystem
     {
-        unsafe readonly int ISystem.GetMessageHandlers(Span<MessageHandler> buffer)
-        {
-            buffer[0] = MessageHandler.Create<ASCIIText256>(new(&ReceiveEvent));
-            return 1;
-        }
-
         [UnmanagedCallersOnly]
-        private static StatusCode ReceiveEvent(SystemContainer container, World world, MemoryAddress message)
+        private static StatusCode ReceiveEvent(HandleMessage.Input input)
         {
-            if (container.World == world)
+            if (input.SimulatorWorld == input.world)
             {
-                Entity messageEntity = new(container.World);
-                messageEntity.AddComponent(message.Read<ASCIIText256>());
+                Entity messageEntity = new(input.world);
+                messageEntity.AddComponent(input.ReadMessage<ASCIIText256>());
                 return StatusCode.Success(0);
             }
 
             return StatusCode.Continue;
         }
 
-        void ISystem.Start(in SystemContainer systemContainer, in World world)
+        readonly void IDisposable.Dispose()
         {
         }
 
-        void ISystem.Update(in SystemContainer systemContainer, in World world, in TimeSpan delta)
+        unsafe void ISystem.CollectMessageHandlers(MessageHandlerCollector collector)
+        {
+            collector.Add<ASCIIText256>(&ReceiveEvent);
+        }
+
+        void ISystem.Start(in SystemContext context, in World world)
         {
         }
 
-        void ISystem.Finish(in SystemContainer systemContainer, in World world)
+        void ISystem.Update(in SystemContext context, in World world, in TimeSpan delta)
         {
         }
 
-        public readonly void Dispose()
+        void ISystem.Finish(in SystemContext context, in World world)
         {
         }
     }
