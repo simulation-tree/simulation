@@ -94,6 +94,10 @@ namespace Simulation
         }
     }
 
+    /// <summary>
+    /// An entity that represents a program running in a <see cref="World"/>,
+    /// operated by a <see cref="Simulator"/>.
+    /// </summary>
     public unsafe readonly struct Program<T> : IProgramEntity where T : unmanaged, IProgram
     {
         private readonly Program program;
@@ -113,11 +117,13 @@ namespace Simulation
             archetype.Add<Program>();
         }
 
+        /// <inheritdoc/>
         public Program(World world, StartProgram start, UpdateProgram update, FinishProgram finish, MemoryAddress allocation)
         {
             program = new(world, start, update, finish, (ushort)sizeof(T), allocation);
         }
 
+        /// <inheritdoc/>
         public Program(World world, T program)
         {
             ushort typeSize = (ushort)sizeof(T);
@@ -126,6 +132,7 @@ namespace Simulation
             this.program = new(world, start, update, finish, typeSize, allocation);
         }
 
+        /// <inheritdoc/>
         public Program(World world)
         {
             T program = new();
@@ -135,16 +142,19 @@ namespace Simulation
             this.program = new(world, start, update, finish, typeSize, allocation);
         }
 
+        /// <inheritdoc/>
         public readonly void Dispose()
         {
             program.Dispose();
         }
 
+        /// <inheritdoc/>
         public static implicit operator Program(Program<T> program)
         {
             return program.program;
         }
 
+        /// <inheritdoc/>
         public static implicit operator Entity(Program<T> program)
         {
             return program.program;

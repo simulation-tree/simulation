@@ -11,7 +11,7 @@ namespace Simulation.Tests
         [UnmanagedCallersOnly]
         private static StatusCode ReceiveEvent(HandleMessage.Input input)
         {
-            if (input.SimulatorWorld == input.world)
+            if (input.Simulator.World == input.world)
             {
                 Entity messageEntity = new(input.world);
                 messageEntity.AddComponent(input.ReadMessage<ASCIIText256>());

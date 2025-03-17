@@ -3,8 +3,13 @@ using System;
 
 namespace Simulation.Exceptions
 {
+    /// <summary>
+    /// Exception thrown when a system is being added, and is missing one or more
+    /// needed functions.
+    /// </summary>
     public class SystemMissingFunctionsException : Exception
     {
+        /// <inheritdoc/>
         public SystemMissingFunctionsException(Type systemType, StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose)
             : base(GetMessage(systemType, start, update, finish, dispose))
         {

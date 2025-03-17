@@ -5,10 +5,16 @@ using Worlds;
 
 namespace Simulation
 {
+    /// <summary>
+    /// Represents a piece of the <see cref="Simulator"/>.
+    /// </summary>
     public readonly struct SystemContext : IEquatable<SystemContext>
     {
         private readonly SystemContainer systemContainer;
 
+        /// <summary>
+        /// The world that the <see cref="Simulator"/> was created with.
+        /// </summary>
         public readonly World World => systemContainer.World;
 
         internal SystemContext(SystemContainer systemContainer)
@@ -32,16 +38,19 @@ namespace Simulation
             systemContainer.simulator.RemoveSystem<T>();
         }
 
+        /// <inheritdoc/>
         public readonly override bool Equals(object? obj)
         {
             return obj is SystemContext context && Equals(context);
         }
 
+        /// <inheritdoc/>
         public readonly bool Equals(SystemContext other)
         {
             return systemContainer == other.systemContainer;
         }
 
+        /// <inheritdoc/>
         public readonly override int GetHashCode()
         {
             return systemContainer.GetHashCode();
@@ -75,11 +84,13 @@ namespace Simulation
             systemContainer.Write(newSystem);
         }
 
+        /// <inheritdoc/>
         public static bool operator ==(SystemContext left, SystemContext right)
         {
             return left.Equals(right);
         }
 
+        /// <inheritdoc/>
         public static bool operator !=(SystemContext left, SystemContext right)
         {
             return !(left == right);

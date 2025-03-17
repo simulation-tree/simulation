@@ -29,6 +29,9 @@ namespace Simulation.Components
         /// </summary>
         public readonly ushort typeSize;
 
+        /// <summary>
+        /// The current or last status code of the program.
+        /// </summary>
         public StatusCode statusCode;
 
         /// <summary>

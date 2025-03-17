@@ -26,6 +26,8 @@ namespace Simulation.Functions
             this.value = value;
         }
 #endif
+
+        /// <inheritdoc/>
         public override string ToString()
         {
             if ((nint)value == default)
@@ -46,26 +48,31 @@ namespace Simulation.Functions
             value(container, world, delta);
         }
 
+        /// <inheritdoc/>
         public readonly override bool Equals(object? obj)
         {
             return obj is UpdateSystem system && Equals(system);
         }
 
+        /// <inheritdoc/>
         public readonly bool Equals(UpdateSystem other)
         {
             return (nint)value == (nint)other.value;
         }
 
+        /// <inheritdoc/>
         public readonly override int GetHashCode()
         {
             return ((nint)value).GetHashCode();
         }
 
+        /// <inheritdoc/>
         public static bool operator ==(UpdateSystem left, UpdateSystem right)
         {
             return left.Equals(right);
         }
 
+        /// <inheritdoc/>
         public static bool operator !=(UpdateSystem left, UpdateSystem right)
         {
             return !(left == right);

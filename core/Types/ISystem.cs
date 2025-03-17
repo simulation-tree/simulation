@@ -6,11 +6,6 @@ namespace Simulation
 {
     /// <summary>
     /// Describes a system type added to <see cref="Simulator"/> instances.
-    /// <para>
-    /// Always initialized with <see langword="default"/> state.
-    /// Use the <see cref="Start(in SystemContainer, in World)"/>
-    /// function to initialize with a custom state.
-    /// </para>
     /// </summary>
     public interface ISystem : IDisposable
     {
@@ -35,7 +30,7 @@ namespace Simulation
         /// <summary>
         /// Called to notify that the system has been started.
         /// <para>
-        /// The <paramref name="world"/> will be the <paramref name="collector"/>'s world first,
+        /// The <paramref name="world"/> will be the <paramref name="context"/>'s world first,
         /// and then with each program in the order they were added.
         /// </para>
         /// </summary>
@@ -44,7 +39,7 @@ namespace Simulation
         /// <summary>
         /// Called when the simulator updates the simulation forward.
         /// <para>
-        /// The <paramref name="world"/> will be the <paramref name="collector"/>'s world first,
+        /// The <paramref name="world"/> will be the <paramref name="context"/>'s world first,
         /// and then with each program in the order they were added.
         /// </para>
         /// </summary>
@@ -55,7 +50,7 @@ namespace Simulation
         /// the <see cref="Simulator"/> has been disposed.
         /// <para>
         /// The <paramref name="world"/> will be with each program in the reverse added
-        /// order, and then with the <paramref name="collector"/>'s world last.
+        /// order, and then with the <paramref name="context"/>'s world last.
         /// </para>
         /// </summary>
         void Finish(in SystemContext context, in World world);

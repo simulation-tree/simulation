@@ -3,6 +3,9 @@ using System.Diagnostics;
 
 namespace Simulation
 {
+    /// <summary>
+    /// Represents a status code for the result of an operation.
+    /// </summary>
     public readonly struct StatusCode : IEquatable<StatusCode>
     {
         /// <summary>
@@ -22,12 +25,28 @@ namespace Simulation
 
         private readonly byte value;
 
+        /// <summary>
+        /// Checks if the status code represents continuation.
+        /// </summary>
         public readonly bool IsContinue => (value & 1) != 0 && (value & 2) == 0;
+
+        /// <summary>
+        /// Checks if the status code represents a successful operation.
+        /// </summary>
         public readonly bool IsSuccess => (value & 1) == 0 && (value & 2) != 0;
+
+        /// <summary>
+        /// Checks if the status code represents a failure.
+        /// </summary>
         public readonly bool IsFailure => (value & 1) != 0 && (value & 2) != 0;
+
+        /// <summary>
+        /// The underlying status code.
+        /// </summary>
         public readonly byte Code => (byte)(value >> 2);
 
 #if NET
+        /// <inheritdoc/>
         [Obsolete("Default constructor not supported", true)]
         public StatusCode()
         {
@@ -40,13 +59,28 @@ namespace Simulation
             this.value = value;
         }
 
+        /// <inheritdoc/>
         public override string ToString()
         {
-            Span<char> destination = stackalloc char[32];
-            int length = ToString(destination);
-            return destination.Slice(0, length).ToString();
+            if (HasSuccess(out byte code))
+            {
+                return $"Success {code}";
+            }
+            else if (HasFailure(out code))
+            {
+                return $"Failure {code}";
+            }
+            else if (value == 0)
+            {
+                return "Default";
+            }
+            else
+            {
+                return "Continue";
+            }
         }
 
+        /// <inheritdoc/>
         public readonly int ToString(Span<char> destination)
         {
             int length = 0;
@@ -99,6 +133,9 @@ namespace Simulation
             return length;
         }
 
+        /// <summary>
+        /// Tries to retrieve the code if the status code indicates success.
+        /// </summary>
         public readonly bool HasSuccess(out byte code)
         {
             if (IsSuccess)
@@ -113,6 +150,9 @@ namespace Simulation
             }
         }
 
+        /// <summary>
+        /// Tries to retrieve the code if the status code indicates failure.
+        /// </summary>
         public readonly bool HasFailure(out byte code)
         {
             if (IsFailure)
@@ -127,6 +167,10 @@ namespace Simulation
             }
         }
 
+        /// <summary>
+        /// Gets a status code indicating that the operation was successful
+        /// with the given <paramref name="code"/>.
+        /// </summary>
         public static StatusCode Success(byte code)
         {
             ThrowIfCodeIsOutOfRange(code);
@@ -137,6 +181,10 @@ namespace Simulation
             return new StatusCode(value);
         }
 
+        /// <summary>
+        /// Gets a status code indicating that the operation was a failure
+        /// with the given <paramref name="code"/>.
+        /// </summary>
         public static StatusCode Failure(byte code)
         {
             ThrowIfCodeIsOutOfRange(code);
@@ -147,44 +195,34 @@ namespace Simulation
             return new StatusCode(value);
         }
 
+        /// <inheritdoc/>
         public readonly override bool Equals(object? obj)
         {
             return obj is StatusCode code && Equals(code);
         }
 
+        /// <inheritdoc/>
         public readonly bool Equals(StatusCode other)
         {
             return value == other.value;
         }
 
+        /// <inheritdoc/>
         public readonly override int GetHashCode()
         {
-            return HashCode.Combine(value);
+            return value;
         }
 
+        /// <inheritdoc/>
         public static bool operator ==(StatusCode left, StatusCode right)
         {
             return left.Equals(right);
         }
 
+        /// <inheritdoc/>
         public static bool operator !=(StatusCode left, StatusCode right)
         {
             return !(left == right);
-        }
-
-        public static implicit operator uint(StatusCode code)
-        {
-            return code.Code;
-        }
-
-        public static implicit operator int(StatusCode code)
-        {
-            return code.Code;
-        }
-
-        public static implicit operator byte(StatusCode code)
-        {
-            return code.Code;
         }
 
         [Conditional("DEBUG")]

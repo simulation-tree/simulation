@@ -160,7 +160,7 @@ namespace Simulation
         }
 
         [Conditional("DEBUG")]
-        public readonly void ThrowIfAlreadyInitializedWith(World world)
+        private readonly void ThrowIfAlreadyInitializedWith(World world)
         {
             if (IsInitializedWith(world))
             {
@@ -169,7 +169,7 @@ namespace Simulation
         }
 
         [Conditional("DEBUG")]
-        public readonly void ThrowIfNotSameType<T>() where T : unmanaged, ISystem
+        private readonly void ThrowIfNotSameType<T>() where T : unmanaged, ISystem
         {
             if (!type.Is<T>())
             {
@@ -179,29 +179,34 @@ namespace Simulation
 
         internal readonly SystemContainer<T> As<T>() where T : unmanaged, ISystem
         {
-            return new(simulator, index, type);
+            return new(simulator, index);
         }
 
+        /// <inheritdoc/>
         public readonly override bool Equals(object? obj)
         {
             return obj is SystemContainer container && Equals(container);
         }
 
+        /// <inheritdoc/>
         public readonly bool Equals(SystemContainer other)
         {
             return allocation.Equals(other.allocation);
         }
 
+        /// <inheritdoc/>
         public readonly override int GetHashCode()
         {
             return allocation.GetHashCode();
         }
 
+        /// <inheritdoc/>
         public static bool operator ==(SystemContainer left, SystemContainer right)
         {
             return left.Equals(right);
         }
 
+        /// <inheritdoc/>
         public static bool operator !=(SystemContainer left, SystemContainer right)
         {
             return !(left == right);
@@ -213,8 +218,10 @@ namespace Simulation
     /// </summary>
     public unsafe readonly struct SystemContainer<T> where T : unmanaged, ISystem
     {
+        /// <summary>
+        /// The simulator that the system belongs to.
+        /// </summary>
         public readonly Simulator simulator;
-        public readonly TypeLayout type;
 
         private readonly int index;
 
@@ -242,32 +249,28 @@ namespace Simulation
         /// Initializes a new <see cref="SystemContainer{T}"/> instance with an
         /// existing system index.
         /// </summary>
-        internal SystemContainer(Simulator simulator, int index, TypeLayout type)
+        internal SystemContainer(Simulator simulator, int index)
         {
             this.simulator = simulator;
             this.index = index;
-            this.type = type;
-        }
-
-        public readonly void RemoveSelf()
-        {
-            simulator.RemoveSystem<T>();
         }
 
         [Conditional("DEBUG")]
-        public readonly void ThrowIfSystemIsDifferent()
+        private readonly void ThrowIfSystemIsDifferent()
         {
-            if (Container.type != type)
+            if (!Container.type.Is<T>())
             {
                 throw new InvalidOperationException($"System at index `{index}` is not of expected type `{typeof(T)}`");
             }
         }
 
+        /// <inheritdoc/>
         public static implicit operator SystemContainer(SystemContainer<T> container)
         {
             return container.Container;
         }
 
+        /// <inheritdoc/>
         public static implicit operator T(SystemContainer<T> container)
         {
             return container.Value;

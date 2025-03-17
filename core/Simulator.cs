@@ -518,7 +518,10 @@ namespace Simulation
             return AddSystem(system, -1);
         }
 
-        public readonly SystemContainer<T> InsertSystem<T>(int index, T system = default) where T : unmanaged, ISystem
+        /// <summary>
+        /// Inserts the <paramref name="system"/> at the specified <paramref name="index"/>.
+        /// </summary>
+        public readonly SystemContainer<T> InsertSystem<T>(int index, T system) where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -540,7 +543,10 @@ namespace Simulation
             return systemContainer.As<T>();
         }
 
-        public readonly SystemContainer<T> AddSystemBefore<T, O>(T system = default) where T : unmanaged, ISystem where O : unmanaged, ISystem
+        /// <summary>
+        /// Inserts the given <paramref name="system"/> before <typeparamref name="O"/>.
+        /// </summary>
+        public readonly SystemContainer<T> AddSystemBefore<T, O>(T system) where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -558,7 +564,10 @@ namespace Simulation
             throw new InvalidOperationException($"System `{typeof(O)}` is not registered in the simulator");
         }
 
-        public readonly SystemContainer<T> AddSystemAfter<T, O>(T system = default) where T : unmanaged, ISystem where O : unmanaged, ISystem
+        /// <summary>
+        /// Inserts the given <paramref name="system"/> after <typeparamref name="O"/>.
+        /// </summary>
+        public readonly SystemContainer<T> AddSystemAfter<T, O>(T system) where T : unmanaged, ISystem where O : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -641,7 +650,7 @@ namespace Simulation
                 ref SystemContainer systemContainer = ref systems[i];
                 if (systemContainer.type == systemType)
                 {
-                    return new(this, i, systemContainer.type);
+                    return new(this, i);
                 }
             }
 
@@ -669,26 +678,31 @@ namespace Simulation
             throw new InvalidOperationException($"System `{typeof(T)}` is not registered in the simulator");
         }
 
+        /// <inheritdoc/>
         public readonly override bool Equals(object? obj)
         {
             return obj is Simulator simulator && Equals(simulator);
         }
 
+        /// <inheritdoc/>
         public readonly bool Equals(Simulator other)
         {
             return simulator == other.simulator;
         }
 
+        /// <inheritdoc/>
         public readonly override int GetHashCode()
         {
             return ((nint)simulator).GetHashCode();
         }
 
+        /// <inheritdoc/>
         public static bool operator ==(Simulator left, Simulator right)
         {
             return left.Equals(right);
         }
 
+        /// <inheritdoc/>
         public static bool operator !=(Simulator left, Simulator right)
         {
             return !(left == right);

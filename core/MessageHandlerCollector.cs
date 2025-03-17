@@ -4,6 +4,9 @@ using Types;
 
 namespace Simulation
 {
+    /// <summary>
+    /// Collector of message handlers.
+    /// </summary>
     public readonly struct MessageHandlerCollector
     {
         private readonly TypeLayout systemType;
@@ -15,6 +18,9 @@ namespace Simulation
             this.messageHandlerGroups = messageHandlerGroups;
         }
 
+        /// <summary>
+        /// Adds the given <paramref name="function"/> to the list of message handlers for the given type <typeparamref name="T"/>.
+        /// </summary>
         public readonly void Add<T>(HandleMessage function) where T : unmanaged
         {
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
@@ -29,6 +35,9 @@ namespace Simulation
         }
 
 #if NET
+        /// <summary>
+        /// Adds the given <paramref name="function"/> to the list of message handlers for the given type <typeparamref name="T"/>.
+        /// </summary>
         public unsafe readonly void Add<T>(delegate* unmanaged<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
@@ -42,6 +51,9 @@ namespace Simulation
             existing.Add(systemType, new(function));
         }
 #else
+        /// <summary>
+        /// Adds the given <paramref name="function"/> to the list of message handlers for the given type <typeparamref name="T"/>.
+        /// </summary>
         public unsafe readonly void Add<T>(delegate*<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
             TypeLayout messageType = TypeRegistry.GetOrRegister<T>();

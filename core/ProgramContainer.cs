@@ -42,6 +42,9 @@ namespace Simulation
         /// </summary>
         public readonly MemoryAddress allocation;
 
+        /// <summary>
+        /// State of the executing program.
+        /// </summary>
         public IsProgram.State state;
 
         /// <summary>
@@ -58,32 +61,38 @@ namespace Simulation
             this.allocation = allocation;
         }
 
+        /// <inheritdoc/>
         public readonly void Dispose()
         {
             world.Dispose();
             allocation.Dispose();
         }
 
+        /// <inheritdoc/>
         public readonly override bool Equals(object? obj)
         {
             return obj is ProgramContainer container && Equals(container);
         }
 
+        /// <inheritdoc/>
         public readonly bool Equals(ProgramContainer other)
         {
             return world == other.world;
         }
 
+        /// <inheritdoc/>
         public readonly override int GetHashCode()
         {
             return world.GetHashCode();
         }
 
+        /// <inheritdoc/>
         public static bool operator ==(ProgramContainer left, ProgramContainer right)
         {
             return left.Equals(right);
         }
 
+        /// <inheritdoc/>
         public static bool operator !=(ProgramContainer left, ProgramContainer right)
         {
             return !(left == right);
