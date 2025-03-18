@@ -639,7 +639,7 @@ namespace Simulation
         /// </para>
         /// </summary>
         /// <exception cref="NullReferenceException"></exception>
-        public readonly SystemContainer<T> GetSystem<T>() where T : unmanaged, ISystem
+        public readonly ref T GetSystem<T>() where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
@@ -650,7 +650,7 @@ namespace Simulation
                 ref SystemContainer systemContainer = ref systems[i];
                 if (systemContainer.type == systemType)
                 {
-                    return new(this, i);
+                    return ref systemContainer.Read<T>();
                 }
             }
 
