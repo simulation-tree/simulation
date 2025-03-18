@@ -16,6 +16,11 @@ namespace Simulation
         /// The world that the <see cref="Simulator"/> was created with.
         /// </summary>
         public readonly World World => systemContainer.World;
+        
+        /// <summary>
+        /// The simulator that the context originates from.
+        /// </summary>
+        public readonly Simulator Simulator => systemContainer.simulator;
 
         internal SystemContext(SystemContainer systemContainer)
         {
