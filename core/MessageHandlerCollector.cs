@@ -9,10 +9,10 @@ namespace Simulation
     /// </summary>
     public readonly struct MessageHandlerCollector
     {
-        private readonly TypeLayout systemType;
+        private readonly Type systemType;
         private readonly HashSet<MessageHandlerGroupKey> messageHandlerGroups;
 
-        internal MessageHandlerCollector(TypeLayout systemType, HashSet<MessageHandlerGroupKey> messageHandlerGroups)
+        internal MessageHandlerCollector(Type systemType, HashSet<MessageHandlerGroupKey> messageHandlerGroups)
         {
             this.systemType = systemType;
             this.messageHandlerGroups = messageHandlerGroups;
@@ -23,7 +23,7 @@ namespace Simulation
         /// </summary>
         public readonly void Add<T>(HandleMessage function) where T : unmanaged
         {
-            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
+            Type messageType = TypeRegistry.GetOrRegisterType<T>();
             MessageHandlerGroupKey key = new(messageType);
             if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
             {
@@ -40,7 +40,7 @@ namespace Simulation
         /// </summary>
         public unsafe readonly void Add<T>(delegate* unmanaged<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
-            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
+            Type messageType = TypeRegistry.GetOrRegisterType<T>();
             MessageHandlerGroupKey key = new(messageType);
             if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
             {

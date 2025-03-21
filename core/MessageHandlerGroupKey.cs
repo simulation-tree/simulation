@@ -7,16 +7,16 @@ namespace Simulation
 {
     internal readonly struct MessageHandlerGroupKey : IDisposable, IEquatable<MessageHandlerGroupKey>
     {
-        public readonly TypeLayout messageType;
+        public readonly Types.Type messageType;
         public readonly Array<MessageHandler> handlers;
 
-        public MessageHandlerGroupKey(TypeLayout messageType)
+        public MessageHandlerGroupKey(Types.Type messageType)
         {
             this.messageType = messageType;
             this.handlers = default;
         }
 
-        public MessageHandlerGroupKey(TypeLayout messageType, Array<MessageHandler> handlers)
+        public MessageHandlerGroupKey(Types.Type messageType, Array<MessageHandler> handlers)
         {
             this.messageType = messageType;
             this.handlers = handlers;
@@ -27,7 +27,7 @@ namespace Simulation
             handlers.Dispose();
         }
 
-        public readonly void Add(TypeLayout systemType, HandleMessage function)
+        public readonly void Add(Types.Type systemType, HandleMessage function)
         {
             int length = handlers.Length;
             handlers.Length = length + 1;

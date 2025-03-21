@@ -12,7 +12,7 @@ namespace Simulation
         /// <summary>
         /// The system that registered this handler.
         /// </summary>
-        public readonly TypeLayout systemType;
+        public readonly Types.Type systemType;
 
         /// <summary>
         /// The function for handling.
@@ -20,14 +20,14 @@ namespace Simulation
         public readonly HandleMessage function;
 
         /// <summary>
-        /// The <see cref="Type"/> of message to handle.
+        /// The <see cref="System.Type"/> of message to handle.
         /// </summary>
-        public readonly Type SystemType => systemType.SystemType;
+        public readonly System.Type SystemType => systemType.SystemType;
 
         /// <summary>
         /// Creates a new instance of the <see cref="MessageHandler"/> struct.
         /// </summary>
-        public MessageHandler(TypeLayout systemType, HandleMessage function)
+        public MessageHandler(Types.Type systemType, HandleMessage function)
         {
             this.systemType = systemType;
             this.function = function;
@@ -78,7 +78,7 @@ namespace Simulation
         /// </summary>
         public static MessageHandler Create<T>(HandleMessage function) where T : unmanaged
         {
-            return new(TypeRegistry.GetOrRegister<T>(), function);
+            return new(TypeRegistry.GetOrRegisterType<T>(), function);
         }
 
         /// <inheritdoc/>

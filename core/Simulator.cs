@@ -216,7 +216,7 @@ namespace Simulation
             StartPrograms(simulatorWorld);
 
             using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
-            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
+            Types.Type messageType = TypeRegistry.GetOrRegisterType<T>();
             StatusCode statusCode = default;
 
             MessageHandlerGroupKey key = new(messageType);
@@ -499,7 +499,7 @@ namespace Simulation
             }
 
             World simulatorWorld = simulator->world;
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
+            Types.Type systemType = TypeRegistry.GetOrRegisterType<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
             system.CollectMessageHandlers(new(systemType, simulator->messageHandlerGroups));
@@ -532,7 +532,7 @@ namespace Simulation
             }
 
             World simulatorWorld = simulator->world;
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
+            Types.Type systemType = TypeRegistry.GetOrRegisterType<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
             system.CollectMessageHandlers(new(systemType, simulator->messageHandlerGroups));
@@ -550,7 +550,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            TypeLayout otherSystemType = TypeRegistry.GetOrRegister<O>();
+            Types.Type otherSystemType = TypeRegistry.GetOrRegisterType<O>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -571,7 +571,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            TypeLayout otherSystemType = TypeRegistry.GetOrRegister<O>();
+            Types.Type otherSystemType = TypeRegistry.GetOrRegisterType<O>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -594,7 +594,7 @@ namespace Simulation
             ThrowIfSystemIsMissing<T>();
 
             World world = simulator->world;
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
+            Types.Type systemType = TypeRegistry.GetOrRegisterType<T>();
             Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
 
             Span<SystemContainer> systems = simulator->systems.AsSpan();
@@ -618,7 +618,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
+            Types.Type systemType = TypeRegistry.GetOrRegisterType<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -643,7 +643,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
+            Types.Type systemType = TypeRegistry.GetOrRegisterType<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -664,7 +664,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfSystemIsMissing<T>() where T : unmanaged, ISystem
         {
-            TypeLayout systemType = TypeRegistry.GetOrRegister<T>();
+            Types.Type systemType = TypeRegistry.GetOrRegisterType<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {

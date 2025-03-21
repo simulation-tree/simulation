@@ -16,7 +16,7 @@ namespace Simulation
         /// <summary>
         /// The type of this system.
         /// </summary>
-        public readonly TypeLayout type;
+        public readonly Types.Type type;
 
         /// <summary>
         /// The simulator that this system was created in.
@@ -40,7 +40,7 @@ namespace Simulation
         /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        internal SystemContainer(int index, int parent, Simulator simulator, MemoryAddress allocation, TypeLayout type, StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose)
+        internal SystemContainer(int index, int parent, Simulator simulator, MemoryAddress allocation, Types.Type type, StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose)
         {
             this.index = index;
             this.parent = parent;
