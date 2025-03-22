@@ -23,7 +23,7 @@ namespace Simulation
         /// </summary>
         public readonly void Add<T>(HandleMessage function) where T : unmanaged
         {
-            Type messageType = TypeRegistry.GetOrRegisterType<T>();
+            Type messageType = MetadataRegistry.GetOrRegisterType<T>();
             MessageHandlerGroupKey key = new(messageType);
             if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
             {
@@ -40,7 +40,7 @@ namespace Simulation
         /// </summary>
         public unsafe readonly void Add<T>(delegate* unmanaged<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
-            Type messageType = TypeRegistry.GetOrRegisterType<T>();
+            Type messageType = MetadataRegistry.GetOrRegisterType<T>();
             MessageHandlerGroupKey key = new(messageType);
             if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
             {

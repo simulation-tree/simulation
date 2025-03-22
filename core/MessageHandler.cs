@@ -78,7 +78,7 @@ namespace Simulation
         /// </summary>
         public static MessageHandler Create<T>(HandleMessage function) where T : unmanaged
         {
-            return new(TypeRegistry.GetOrRegisterType<T>(), function);
+            return new(MetadataRegistry.GetOrRegisterType<T>(), function);
         }
 
         /// <inheritdoc/>

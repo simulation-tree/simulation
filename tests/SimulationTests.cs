@@ -14,8 +14,8 @@ namespace Simulation.Tests
 
         static SimulationTests()
         {
-            TypeRegistry.Load<SimulationTypeBank>();
-            TypeRegistry.Load<SimulationTestsTypeBank>();
+            MetadataRegistry.Load<SimulationTypeBank>();
+            MetadataRegistry.Load<SimulationTestsTypeBank>();
         }
 
         protected override void SetUp()
