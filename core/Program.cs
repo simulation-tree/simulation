@@ -38,9 +38,9 @@ namespace Simulation
         /// </summary>
         public Program(World hostWorld, StartProgram start, UpdateProgram update, FinishProgram finish, ushort typeSize, MemoryAddress allocation)
         {
-            World programWorld = World.Create();
-            programWorld.Schema.CopyFrom(hostWorld.Schema);
-            this.world = hostWorld;
+            Schema programSchema = hostWorld.Schema.Clone();
+            World programWorld = new(programSchema);
+            world = hostWorld;
             value = world.CreateEntity(new IsProgram(start, update, finish, typeSize, allocation, programWorld));
         }
 
