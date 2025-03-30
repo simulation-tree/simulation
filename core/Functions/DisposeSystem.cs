@@ -20,7 +20,7 @@ namespace Simulation.Functions
         private readonly delegate*<SystemContainer, World, void> value;
         
         /// <inheritdoc/>
-        public DisposeSystem(delegate* unmanaged<SystemContainer, World, void> value)
+        public DisposeSystem(delegate*<SystemContainer, World, void> value)
         {
             this.value = value;
         }

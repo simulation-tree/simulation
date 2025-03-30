@@ -56,7 +56,7 @@ namespace Simulation
         /// </summary>
         public unsafe readonly void Add<T>(delegate*<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
-            TypeLayout messageType = TypeRegistry.GetOrRegister<T>();
+            Type messageType = MetadataRegistry.GetOrRegisterType<T>();
             MessageHandlerGroupKey key = new(messageType);
             if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
             {
@@ -64,7 +64,7 @@ namespace Simulation
                 messageHandlerGroups.Add(existing);
             }
 
-            existing.Add(new(function));
+            existing.Add(systemType, new(function));
         }
 #endif
     }
