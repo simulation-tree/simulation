@@ -322,7 +322,7 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Only updates the systems forward.
+        /// Only updates the systems forward with the simulator world first, then program worlds.
         /// </summary>
         public readonly void UpdateSystems(TimeSpan delta)
         {

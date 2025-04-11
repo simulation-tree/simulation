@@ -43,6 +43,40 @@ namespace Simulation
             systemContainer.simulator.RemoveSystem<T>();
         }
 
+        /// <summary>
+        /// Submits a <paramref name="message"/> for a potential system to handle.
+        /// </summary>
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage<T>(T message) where T : unmanaged
+        {
+            return systemContainer.simulator.TryHandleMessage(message);
+        }
+
+        /// <summary>
+        /// Submits a <paramref name="message"/> for a potential system to handle.
+        /// </summary>
+        /// <returns><see langword="default"/> if no handler was found.</returns>
+        public readonly StatusCode TryHandleMessage<T>(ref T message) where T : unmanaged
+        {
+            return systemContainer.simulator.TryHandleMessage(ref message);
+        }
+
+        /// <summary>
+        /// Only updates the systems forward with the simulator world first, then program worlds.
+        /// </summary>
+        public readonly void UpdateSystems(TimeSpan delta)
+        {
+            systemContainer.simulator.UpdateSystems(delta);
+        }
+
+        /// <summary>
+        /// Updates all systems only with the given <paramref name="world"/>.
+        /// </summary>
+        public readonly void UpdateSystems(TimeSpan delta, World world)
+        {
+            systemContainer.simulator.UpdateSystems(delta, world);
+        }
+
         /// <inheritdoc/>
         public readonly override bool Equals(object? obj)
         {
@@ -68,15 +102,6 @@ namespace Simulation
             {
                 throw new SystemTypeMismatchException(typeof(T), systemContainer.type);
             }
-        }
-
-        /// <summary>
-        /// Asks the simulator to handle the given <paramref name="message"/>.
-        /// </summary>
-        /// <returns><see langword="default"/> if no system handled it.</returns>
-        public readonly StatusCode TryHandleMessage<T>(ref T message) where T : unmanaged
-        {
-            return systemContainer.simulator.TryHandleMessage(ref message);
         }
 
         /// <summary>
