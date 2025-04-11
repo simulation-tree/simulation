@@ -6,7 +6,7 @@ using Worlds;
 namespace Simulation
 {
     /// <summary>
-    /// Represents a piece of the <see cref="Simulator"/>.
+    /// Represents a piece of the <see cref="Simulation.Simulator"/>.
     /// </summary>
     public readonly struct SystemContext : IEquatable<SystemContext>
     {
@@ -16,7 +16,7 @@ namespace Simulation
         /// The world that the <see cref="Simulator"/> was created with.
         /// </summary>
         public readonly World World => systemContainer.World;
-        
+
         /// <summary>
         /// The simulator that the context originates from.
         /// </summary>
