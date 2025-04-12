@@ -1,7 +1,6 @@
 ﻿using Collections.Generic;
 using Simulation.Functions;
 using System;
-using Types;
 
 namespace Simulation
 {
