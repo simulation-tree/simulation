@@ -41,8 +41,8 @@ Systems take precedence over programs:
 
 **Starting and Updating**
 
-Systems will always be started before programs. Iterating first with the simulator
-world, and then with the world of each program in the order they were created.
+Systems will always be started and updated before programs. Iterating with the simulator
+world first, and then with each program world in the order they were created.
 
 **Finishing**
 
@@ -108,7 +108,7 @@ public readonly partial struct ExampleSystem : ISystem
 
     void ISystem.Start(in SystemContext context, in World world)
     {
-        if (context.World == world)
+        if (context.IsSimulatorWorld(world))
         {
             context.Write(new ExampleSystem(initialData, context));
         }
@@ -131,7 +131,7 @@ public readonly partial struct AllSystems : ISystem
 
     void ISystem.Start(in SystemContext context, in World world)
     {
-        if (context.World == world)
+        if (context.IsSimulatorWorld(world))
         {
             context.AddSystem(new ExampleSystem(100));
         }
@@ -143,7 +143,7 @@ public readonly partial struct AllSystems : ISystem
 
     void ISystem.Finish(in SystemContext context, in World world)
     {
-        if (systemContainer.World == world)
+        if (context.IsSimulatorWorld(world))
         {
             context.RemoveSystem<ExampleSystem>();
         }
@@ -151,9 +151,9 @@ public readonly partial struct AllSystems : ISystem
 }
 ```
 
-Notice that the systems aren't added in the constructor, and aren't removed in dispose.
-This is because adding the systems through a `SystemContext` gives information to the
-simulator about ordering of dispose calls.
+Notice that the systems aren't added/removed in the constructor/dispose. But instead,
+they're added through the start/finish. This is because the `SystemContext` has functionality
+for checking if initializing world is the simulator world, which will always be first and last.
 
 ### Programs
 

@@ -13,7 +13,7 @@ namespace Simulation
         private readonly SystemContainer systemContainer;
 
         /// <summary>
-        /// The world that the <see cref="Simulator"/> was created with.
+        /// The world that the <see cref="Simulation.Simulator"/> was created with.
         /// </summary>
         public readonly World World => systemContainer.World;
 
@@ -25,6 +25,14 @@ namespace Simulation
         internal SystemContext(SystemContainer systemContainer)
         {
             this.systemContainer = systemContainer;
+        }
+
+        /// <summary>
+        /// Checks if the given <paramref name="world"/> is the world of the simulator.
+        /// </summary>
+        public readonly bool IsSimulatorWorld(World world)
+        {
+            return systemContainer.simulator.World == world;
         }
 
         /// <summary>
