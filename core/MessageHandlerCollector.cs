@@ -1,6 +1,5 @@
-﻿using Collections.Generic;
-using Simulation.Functions;
-using Types;
+﻿using Simulation.Functions;
+using System;
 
 namespace Simulation
 {
@@ -9,13 +8,13 @@ namespace Simulation
     /// </summary>
     public readonly struct MessageHandlerCollector
     {
-        private readonly Type systemType;
-        private readonly HashSet<MessageHandlerGroupKey> messageHandlerGroups;
+        private readonly RuntimeTypeHandle systemType;
+        private readonly MessageHandlers messageHandlers;
 
-        internal MessageHandlerCollector(Type systemType, HashSet<MessageHandlerGroupKey> messageHandlerGroups)
+        internal MessageHandlerCollector(RuntimeTypeHandle systemType, MessageHandlers messageHandlers)
         {
             this.systemType = systemType;
-            this.messageHandlerGroups = messageHandlerGroups;
+            this.messageHandlers = messageHandlers;
         }
 
         /// <summary>
@@ -23,15 +22,8 @@ namespace Simulation
         /// </summary>
         public readonly void Add<T>(HandleMessage function) where T : unmanaged
         {
-            Type messageType = MetadataRegistry.GetOrRegisterType<T>();
-            MessageHandlerGroupKey key = new(messageType);
-            if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
-            {
-                existing = new(messageType, new(0));
-                messageHandlerGroups.Add(existing);
-            }
-
-            existing.Add(systemType, function);
+            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
+            messageHandlers.Add(systemType, messageType, function);
         }
 
 #if NET
@@ -40,15 +32,8 @@ namespace Simulation
         /// </summary>
         public unsafe readonly void Add<T>(delegate* unmanaged<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
-            Type messageType = MetadataRegistry.GetOrRegisterType<T>();
-            MessageHandlerGroupKey key = new(messageType);
-            if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
-            {
-                existing = new(messageType, new(0));
-                messageHandlerGroups.Add(existing);
-            }
-
-            existing.Add(systemType, new(function));
+            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
+            messageHandlers.Add(systemType, messageType, new(function));
         }
 #else
         /// <summary>
@@ -56,15 +41,8 @@ namespace Simulation
         /// </summary>
         public unsafe readonly void Add<T>(delegate*<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
-            Type messageType = MetadataRegistry.GetOrRegisterType<T>();
-            MessageHandlerGroupKey key = new(messageType);
-            if (!messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existing))
-            {
-                existing = new(messageType, new(0));
-                messageHandlerGroups.Add(existing);
-            }
-
-            existing.Add(systemType, new(function));
+            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
+            messageHandlers.Add(systemType, messageType, new(function));
         }
 #endif
     }

@@ -8,14 +8,14 @@ namespace Simulation.Exceptions
     public class SystemTypeMismatchException : Exception
     {
         /// <inheritdoc/>
-        public SystemTypeMismatchException(System.Type actualType, Types.Type expectedType)
+        public SystemTypeMismatchException(Type actualType, Type? expectedType)
             : base(GetMessage(actualType, expectedType))
         {
         }
 
-        private static string GetMessage(System.Type actualType, Types.Type expectedType)
+        private static string GetMessage(Type actualType, Type? expectedType)
         {
-            return $"The system `{actualType.Name}` is not of the expected type `{expectedType.SystemType.Name}`";
+            return $"The system `{actualType.Name}` is not of the expected type `{expectedType}`";
         }
     }
 }

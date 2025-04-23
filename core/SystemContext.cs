@@ -27,12 +27,19 @@ namespace Simulation
             this.systemContainer = systemContainer;
         }
 
+        /// <inheritdoc/>
+        public readonly override string ToString()
+        {
+            return systemContainer.ToString();
+        }
+
         /// <summary>
-        /// Checks if the given <paramref name="world"/> is the world of the simulator.
+        /// Checks if the given <paramref name="world"/> is the world that the
+        /// simulator was created with.
         /// </summary>
         public readonly bool IsSimulatorWorld(World world)
         {
-            return systemContainer.simulator.World == world;
+            return systemContainer.IsSimulatorWorld(world);
         }
 
         /// <summary>
@@ -106,9 +113,9 @@ namespace Simulation
         [Conditional("DEBUG")]
         private readonly void ThrowIfSystemTypeMismatch<T>() where T : unmanaged
         {
-            if (!systemContainer.type.Is<T>())
+            if (systemContainer.type != RuntimeTypeTable.GetAddress<T>())
             {
-                throw new SystemTypeMismatchException(typeof(T), systemContainer.type);
+                throw new SystemTypeMismatchException(typeof(T), systemContainer.Type);
             }
         }
 

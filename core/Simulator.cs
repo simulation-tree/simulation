@@ -2,22 +2,22 @@
 using Simulation.Components;
 using Simulation.Exceptions;
 using Simulation.Functions;
+using Simulation.Pointers;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using Types;
 using Unmanaged;
 using Worlds;
-using Pointer = Simulation.Pointers.Simulator;
 
 namespace Simulation
 {
     /// <summary>
     /// A simulator that manages systems and programs.
     /// </summary>
+    [SkipLocalsInit]
     public unsafe struct Simulator : IDisposable, IEquatable<Simulator>
     {
-        private Pointer* simulator;
+        private SimulatorPointer* simulator;
 
         /// <summary>
         /// The world that this simulator was created for.
@@ -83,7 +83,7 @@ namespace Simulation
         /// </summary>
         public Simulator(nint address)
         {
-            simulator = (Pointer*)address;
+            simulator = (SimulatorPointer*)address;
         }
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace Simulation
         /// </summary>
         public Simulator(void* pointer)
         {
-            simulator = (Pointer*)pointer;
+            simulator = (SimulatorPointer*)pointer;
         }
 
         /// <summary>
@@ -104,12 +104,21 @@ namespace Simulation
                 throw new ArgumentException("Attempting to create a simulator without a world");
             }
 
-            ref Pointer simulator = ref MemoryAddress.Allocate<Pointer>();
-            simulator = new(world);
-            fixed (Pointer* pointer = &simulator)
-            {
-                this.simulator = pointer;
-            }
+            simulator = MemoryAddress.AllocatePointer<SimulatorPointer>();
+            simulator->world = world;
+            simulator->programComponent = world.Schema.GetComponentType<IsProgram>();
+            simulator->lastUpdateTime = DateTime.MinValue;
+            simulator->systems = new(4);
+            simulator->programs = new(4);
+            simulator->activePrograms = new(4);
+            simulator->programsMap = new(4);
+            simulator->handlers = new(4);
+        }
+
+        /// <inheritdoc/>
+        public readonly override string ToString()
+        {
+            return $"Simulator ({World})";
         }
 
         /// <summary>
@@ -133,7 +142,7 @@ namespace Simulation
                 SystemContainer systemContainer = systems[i];
                 if (systemContainer.parent == -1)
                 {
-                    systemContainer.Dispose();
+                    systemContainer.FinalizeAndDispose();
                 }
             }
 
@@ -144,12 +153,7 @@ namespace Simulation
                 programs[i].Dispose();
             }
 
-            foreach (MessageHandlerGroupKey messageHandlerGroup in simulator->messageHandlerGroups)
-            {
-                messageHandlerGroup.Dispose();
-            }
-
-            simulator->messageHandlerGroups.Dispose();
+            simulator->handlers.Dispose();
             simulator->programsMap.Dispose();
             simulator->activePrograms.Dispose();
             simulator->programs.Dispose();
@@ -216,13 +220,12 @@ namespace Simulation
             StartPrograms(simulatorWorld);
 
             using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
-            Types.Type messageType = MetadataRegistry.GetOrRegisterType<T>();
+            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
             StatusCode statusCode = default;
 
-            MessageHandlerGroupKey key = new(messageType);
-            if (simulator->messageHandlerGroups.TryGetValue(key, out MessageHandlerGroupKey existingKey))
+            if (simulator->handlers.TryGetValue(messageType, out Array<MessageHandler> handlers))
             {
-                Span<MessageHandler> handlers = existingKey.handlers.AsSpan();
+                Span<MessageHandler> handlersSpan = handlers.AsSpan();
                 Span<ProgramContainer> programs = simulator->activePrograms.AsSpan();
                 Span<SystemContainer> systems = simulator->systems.AsSpan();
 
@@ -230,12 +233,12 @@ namespace Simulation
                 for (int s = 0; s < systems.Length; s++)
                 {
                     ref SystemContainer system = ref systems[s];
-                    for (int f = 0; f < handlers.Length; f++)
+                    for (int f = 0; f < handlersSpan.Length; f++)
                     {
-                        MessageHandler handler = handlers[f];
+                        MessageHandler handler = handlersSpan[f];
                         if (handler.systemType == system.type)
                         {
-                            statusCode = handler.function.Invoke(system, simulatorWorld, messageContainer);
+                            statusCode = handler.function.Invoke(system, simulatorWorld, messageContainer, messageType);
                             if (statusCode != default)
                             {
                                 message = messageContainer.Read<T>();
@@ -253,12 +256,12 @@ namespace Simulation
                     {
                         ref ProgramContainer program = ref programs[p];
                         World programWorld = program.world;
-                        for (int f = 0; f < handlers.Length; f++)
+                        for (int f = 0; f < handlersSpan.Length; f++)
                         {
-                            ref MessageHandler handler = ref handlers[f];
+                            ref MessageHandler handler = ref handlersSpan[f];
                             if (handler.systemType == system.type)
                             {
-                                statusCode = handler.function.Invoke(system, programWorld, messageContainer);
+                                statusCode = handler.function.Invoke(system, programWorld, messageContainer, messageType);
                                 if (statusCode != default)
                                 {
                                     message = messageContainer.Read<T>();
@@ -378,7 +381,6 @@ namespace Simulation
             }
         }
 
-        [SkipLocalsInit]
         private readonly void UpdatePrograms(World simulatorWorld, TimeSpan delta)
         {
             int programComponent = simulator->programComponent;
@@ -499,10 +501,10 @@ namespace Simulation
             }
 
             World simulatorWorld = simulator->world;
-            Types.Type systemType = MetadataRegistry.GetOrRegisterType<T>();
+            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
-            system.CollectMessageHandlers(new(systemType, simulator->messageHandlerGroups));
+            system.CollectMessageHandlers(new(systemType, simulator->handlers));
             MemoryAddress systemAllocation = MemoryAddress.AllocateValue(system);
             SystemContainer systemContainer = new(simulator->systems.Count, parent, this, systemAllocation, systemType, start, update, finish, dispose);
             simulator->systems.Add(systemContainer);
@@ -532,10 +534,10 @@ namespace Simulation
             }
 
             World simulatorWorld = simulator->world;
-            Types.Type systemType = MetadataRegistry.GetOrRegisterType<T>();
+            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
-            system.CollectMessageHandlers(new(systemType, simulator->messageHandlerGroups));
+            system.CollectMessageHandlers(new(systemType, simulator->handlers));
             MemoryAddress systemAllocation = MemoryAddress.AllocateValue(system);
             SystemContainer systemContainer = new(index, -1, this, systemAllocation, systemType, start, update, finish, dispose);
             simulator->systems.Insert(index, systemContainer);
@@ -550,7 +552,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            Types.Type otherSystemType = MetadataRegistry.GetOrRegisterType<O>();
+            nint otherSystemType = RuntimeTypeTable.GetAddress<O>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -571,7 +573,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            Types.Type otherSystemType = MetadataRegistry.GetOrRegisterType<O>();
+            nint otherSystemType = RuntimeTypeTable.GetAddress<O>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -586,16 +588,15 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Removes a system from the simulator and disposes it.
+        /// Removes the first system of type <typeparamref name="T"/> and disposes it.
         /// </summary>
         public readonly void RemoveSystem<T>() where T : unmanaged, ISystem
         {
             MemoryAddress.ThrowIfDefault(simulator);
             ThrowIfSystemIsMissing<T>();
 
-            World world = simulator->world;
-            Types.Type systemType = MetadataRegistry.GetOrRegisterType<T>();
-            Trace.WriteLine($"Removing system `{typeof(T)}` from `{world}`");
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            Trace.WriteLine($"Removing system `{typeof(T)}` from `{simulator->world}`");
 
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
@@ -603,12 +604,24 @@ namespace Simulation
                 ref SystemContainer systemContainer = ref systems[i];
                 if (systemContainer.type == systemType)
                 {
-                    T removed = systemContainer.Read<T>();
-                    systemContainer.Dispose();
+                    systemContainer.FinalizeAndDispose();
                     simulator->systems.RemoveAt(i);
                     return;
                 }
             }
+        }
+
+        internal readonly void RemoveSystem(int index)
+        {
+            MemoryAddress.ThrowIfDefault(simulator);
+            ThrowIfSystemIsMissing(index);
+
+            Span<SystemContainer> systems = simulator->systems.AsSpan();
+            ref SystemContainer systemContainer = ref systems[index];
+            Trace.WriteLine($"Removing system `{systemContainer.Type}` from `{simulator->world}`");
+
+            systemContainer.FinalizeAndDispose();
+            simulator->systems.RemoveAt(index);
         }
 
         /// <summary>
@@ -618,7 +631,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            Types.Type systemType = MetadataRegistry.GetOrRegisterType<T>();
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -643,7 +656,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            Types.Type systemType = MetadataRegistry.GetOrRegisterType<T>();
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -664,7 +677,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfSystemIsMissing<T>() where T : unmanaged, ISystem
         {
-            Types.Type systemType = MetadataRegistry.GetOrRegisterType<T>();
+            nint systemType = RuntimeTypeTable.GetAddress<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -676,6 +689,15 @@ namespace Simulation
             }
 
             throw new InvalidOperationException($"System `{typeof(T)}` is not registered in the simulator");
+        }
+
+        [Conditional("DEBUG")]
+        private readonly void ThrowIfSystemIsMissing(int index)
+        {
+            if (index < 0 || index >= simulator->systems.Count)
+            {
+                throw new InvalidOperationException($"System at index `{index}` is not registered in the simulator");
+            }
         }
 
         /// <inheritdoc/>

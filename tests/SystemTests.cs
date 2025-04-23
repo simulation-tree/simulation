@@ -14,6 +14,7 @@ namespace Simulation.Tests
                 {
                     simulator.AddSystem(new SimpleSystem(4));
 
+                    Assert.That(simulator.ContainsSystem<SimpleSystem>(), Is.True);
                     Assert.That(simulator.Systems.Length, Is.EqualTo(1));
 
                     simulator.Update();
@@ -26,6 +27,7 @@ namespace Simulation.Tests
                     Entity beforeFinalizeEntity = new(simulatorWorld, 2);
                     Assert.That(beforeFinalizeEntity.GetComponent<bool>(), Is.EqualTo(false));
 
+                    Assert.That(simulator.ContainsSystem<SimpleSystem>(), Is.True);
                     simulator.RemoveSystem<SimpleSystem>();
                 }
 

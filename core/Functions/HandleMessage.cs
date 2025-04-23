@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Simulation.Exceptions;
+using System;
+using System.Diagnostics;
 using Unmanaged;
 using Worlds;
 
@@ -30,9 +32,9 @@ namespace Simulation.Functions
         /// <summary>
         /// Invokes the function.
         /// </summary>
-        public readonly StatusCode Invoke(SystemContainer container, World world, MemoryAddress message)
+        public readonly StatusCode Invoke(SystemContainer container, World world, MemoryAddress message, RuntimeTypeHandle messageType)
         {
-            return value(new(container, world, message));
+            return value(new(container, world, message, messageType));
         }
 
         /// <inheritdoc/>
@@ -82,6 +84,7 @@ namespace Simulation.Functions
             public readonly World world;
 
             private readonly MemoryAddress data;
+            private readonly nint messageType;
 
             /// <summary>
             /// The simulator where the message is being handled from.
@@ -89,11 +92,30 @@ namespace Simulation.Functions
             public readonly Simulator Simulator => system.simulator;
 
             /// <inheritdoc/>
-            public Input(SystemContainer system, World world, MemoryAddress data)
+            public Input(SystemContainer system, World world, MemoryAddress data, RuntimeTypeHandle messageType)
             {
                 this.system = system;
                 this.world = world;
                 this.data = data;
+                this.messageType = RuntimeTypeTable.GetAddress(messageType);
+            }
+
+            [Conditional("DEBUG")]
+            private readonly void ThrowIfMessageTypeMismatch<T>() where T : unmanaged
+            {
+                if (messageType != RuntimeTypeTable.GetAddress<T>())
+                {
+                    throw new InvalidOperationException($"The message type {typeof(T)} does not match the expected type {messageType}");
+                }
+            }
+
+            [Conditional("DEBUG")]
+            private readonly void ThrowIfSystemTypeMismatch<T>() where T : unmanaged
+            {
+                if (system.type != RuntimeTypeTable.GetAddress<T>())
+                {
+                    throw new SystemTypeMismatchException(typeof(T), system.Type);
+                }
             }
 
             /// <summary>
@@ -101,6 +123,8 @@ namespace Simulation.Functions
             /// </summary>
             public readonly ref T ReadMessage<T>() where T : unmanaged
             {
+                ThrowIfMessageTypeMismatch<T>();
+
                 return ref data.Read<T>();
             }
 
@@ -109,6 +133,8 @@ namespace Simulation.Functions
             /// </summary>
             public readonly ref T ReadSystem<T>() where T : unmanaged, ISystem
             {
+                ThrowIfSystemTypeMismatch<T>();
+
                 return ref system.Read<T>();
             }
         }
