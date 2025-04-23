@@ -1,6 +1,7 @@
 ﻿using Simulation.Exceptions;
 using System;
 using System.Diagnostics;
+using Types;
 using Unmanaged;
 using Worlds;
 
@@ -32,7 +33,7 @@ namespace Simulation.Functions
         /// <summary>
         /// Invokes the function.
         /// </summary>
-        public readonly StatusCode Invoke(SystemContainer container, World world, MemoryAddress message, RuntimeTypeHandle messageType)
+        public readonly StatusCode Invoke(SystemContainer container, World world, MemoryAddress message, TypeMetadata messageType)
         {
             return value(new(container, world, message, messageType));
         }
@@ -84,7 +85,7 @@ namespace Simulation.Functions
             public readonly World world;
 
             private readonly MemoryAddress data;
-            private readonly nint messageType;
+            private readonly TypeMetadata messageType;
 
             /// <summary>
             /// The simulator where the message is being handled from.
@@ -92,18 +93,18 @@ namespace Simulation.Functions
             public readonly Simulator Simulator => system.simulator;
 
             /// <inheritdoc/>
-            public Input(SystemContainer system, World world, MemoryAddress data, RuntimeTypeHandle messageType)
+            public Input(SystemContainer system, World world, MemoryAddress data, TypeMetadata messageType)
             {
                 this.system = system;
                 this.world = world;
                 this.data = data;
-                this.messageType = RuntimeTypeTable.GetAddress(messageType);
+                this.messageType = messageType;
             }
 
             [Conditional("DEBUG")]
             private readonly void ThrowIfMessageTypeMismatch<T>() where T : unmanaged
             {
-                if (messageType != RuntimeTypeTable.GetAddress<T>())
+                if (!messageType.Is<T>())
                 {
                     throw new InvalidOperationException($"The message type {typeof(T)} does not match the expected type {messageType}");
                 }
@@ -112,9 +113,9 @@ namespace Simulation.Functions
             [Conditional("DEBUG")]
             private readonly void ThrowIfSystemTypeMismatch<T>() where T : unmanaged
             {
-                if (system.type != RuntimeTypeTable.GetAddress<T>())
+                if (!system.type.Is<T>())
                 {
-                    throw new SystemTypeMismatchException(typeof(T), system.Type);
+                    throw new SystemTypeMismatchException(typeof(T), system.type);
                 }
             }
 

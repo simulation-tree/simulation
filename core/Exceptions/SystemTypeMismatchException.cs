@@ -1,4 +1,5 @@
 ﻿using System;
+using Types;
 
 namespace Simulation.Exceptions
 {
@@ -8,12 +9,12 @@ namespace Simulation.Exceptions
     public class SystemTypeMismatchException : Exception
     {
         /// <inheritdoc/>
-        public SystemTypeMismatchException(Type actualType, Type? expectedType)
+        public SystemTypeMismatchException(Type actualType, TypeMetadata expectedType)
             : base(GetMessage(actualType, expectedType))
         {
         }
 
-        private static string GetMessage(Type actualType, Type? expectedType)
+        private static string GetMessage(Type actualType, TypeMetadata expectedType)
         {
             return $"The system `{actualType.Name}` is not of the expected type `{expectedType}`";
         }

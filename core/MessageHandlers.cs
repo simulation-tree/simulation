@@ -1,12 +1,13 @@
 ﻿using Collections.Generic;
 using Simulation.Functions;
 using System;
+using Types;
 
 namespace Simulation
 {
     internal readonly struct MessageHandlers : IDisposable
     {
-        private readonly Dictionary<nint, Array<MessageHandler>> map;
+        private readonly Dictionary<TypeMetadata, Array<MessageHandler>> map;
 
         public MessageHandlers(int initialCapacity)
         {
@@ -23,12 +24,12 @@ namespace Simulation
             map.Dispose();
         }
 
-        public readonly void Add(RuntimeTypeHandle systemType, RuntimeTypeHandle messageType, HandleMessage function)
+        public readonly void Add(TypeMetadata systemType, TypeMetadata messageType, HandleMessage function)
         {
-            ref Array<MessageHandler> handlers = ref map.TryGetValue(RuntimeTypeTable.GetAddress(messageType), out bool contains);
+            ref Array<MessageHandler> handlers = ref map.TryGetValue(messageType, out bool contains);
             if (!contains)
             {
-                handlers = ref map.Add(RuntimeTypeTable.GetAddress(messageType));
+                handlers = ref map.Add(messageType);
                 handlers = new(0);
             }
 
@@ -37,9 +38,9 @@ namespace Simulation
             handlers[length] = new(systemType, function);
         }
 
-        public readonly bool TryGetValue(RuntimeTypeHandle messageType, out Array<MessageHandler> handlers)
+        public readonly bool TryGetValue(TypeMetadata messageType, out Array<MessageHandler> handlers)
         {
-            return map.TryGetValue(RuntimeTypeTable.GetAddress(messageType), out handlers);
+            return map.TryGetValue(messageType, out handlers);
         }
     }
 }

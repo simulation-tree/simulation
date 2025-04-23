@@ -1,16 +1,17 @@
 ﻿using Simulation.Functions;
 using System;
+using Types;
 
 namespace Simulation
 {
     internal readonly struct MessageHandler : IEquatable<MessageHandler>
     {
-        public readonly nint systemType;
+        public readonly TypeMetadata systemType;
         public readonly HandleMessage function;
 
-        public MessageHandler(RuntimeTypeHandle systemType, HandleMessage function)
+        public MessageHandler(TypeMetadata systemType, HandleMessage function)
         {
-            this.systemType = RuntimeTypeTable.GetAddress(systemType);
+            this.systemType = systemType;
             this.function = function;
         }
 

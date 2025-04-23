@@ -2,6 +2,7 @@
 using Simulation.Functions;
 using System;
 using System.Diagnostics;
+using Types;
 using Unmanaged;
 using Worlds;
 
@@ -12,7 +13,10 @@ namespace Simulation
     /// </summary>
     public readonly unsafe struct SystemContainer : IDisposable, IEquatable<SystemContainer>
     {
-        internal readonly nint type;
+        /// <summary>
+        /// The type of the system.
+        /// </summary>
+        public readonly TypeMetadata type;
 
         /// <summary>
         /// The simulator that this system was created in.
@@ -34,20 +38,15 @@ namespace Simulation
         public readonly World World => simulator.World;
 
         /// <summary>
-        /// The type of this system.
-        /// </summary>
-        public readonly Type? Type => Type.GetTypeFromHandle(RuntimeTypeTable.GetHandle(type));
-
-        /// <summary>
         /// Creates a new <see cref="SystemContainer"/> instance.
         /// </summary>
-        internal SystemContainer(int index, int parent, Simulator simulator, MemoryAddress allocation, RuntimeTypeHandle type, StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose)
+        internal SystemContainer(int index, int parent, Simulator simulator, MemoryAddress allocation, TypeMetadata type, StartSystem start, UpdateSystem update, FinishSystem finish, DisposeSystem dispose)
         {
             this.index = index;
             this.parent = parent;
             this.simulator = simulator;
             this.allocation = allocation;
-            this.type = RuntimeTypeTable.GetAddress(type);
+            this.type = type;
             this.start = start;
             this.update = update;
             this.finish = finish;
@@ -67,7 +66,7 @@ namespace Simulation
         /// <inheritdoc/>
         public readonly override string ToString()
         {
-            return Type?.ToString() ?? type.ToString();
+            return type.ToString();
         }
 
         /// <summary>
@@ -188,7 +187,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         private readonly void ThrowIfNotSameType<T>() where T : unmanaged, ISystem
         {
-            if (type != RuntimeTypeTable.GetAddress<T>())
+            if (!type.Is<T>())
             {
                 throw new InvalidOperationException($"System `{this}` is not of type `{typeof(T)}`");
             }
@@ -283,7 +282,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         private readonly void ThrowIfSystemIsDifferent()
         {
-            if (!Container.type.Equals(RuntimeTypeTable.GetAddress<T>()))
+            if (!Container.type.Is<T>())
             {
                 throw new InvalidOperationException($"System at index `{index}` is not of expected type `{typeof(T)}`");
             }

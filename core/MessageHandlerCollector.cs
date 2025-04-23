@@ -1,5 +1,5 @@
 ﻿using Simulation.Functions;
-using System;
+using Types;
 
 namespace Simulation
 {
@@ -8,10 +8,10 @@ namespace Simulation
     /// </summary>
     public readonly struct MessageHandlerCollector
     {
-        private readonly RuntimeTypeHandle systemType;
+        private readonly TypeMetadata systemType;
         private readonly MessageHandlers messageHandlers;
 
-        internal MessageHandlerCollector(RuntimeTypeHandle systemType, MessageHandlers messageHandlers)
+        internal MessageHandlerCollector(TypeMetadata systemType, MessageHandlers messageHandlers)
         {
             this.systemType = systemType;
             this.messageHandlers = messageHandlers;
@@ -22,7 +22,7 @@ namespace Simulation
         /// </summary>
         public readonly void Add<T>(HandleMessage function) where T : unmanaged
         {
-            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
+            TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             messageHandlers.Add(systemType, messageType, function);
         }
 
@@ -32,7 +32,7 @@ namespace Simulation
         /// </summary>
         public unsafe readonly void Add<T>(delegate* unmanaged<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
-            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
+            TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             messageHandlers.Add(systemType, messageType, new(function));
         }
 #else
@@ -41,7 +41,7 @@ namespace Simulation
         /// </summary>
         public unsafe readonly void Add<T>(delegate*<HandleMessage.Input, StatusCode> function) where T : unmanaged
         {
-            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
+            TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             messageHandlers.Add(systemType, messageType, new(function));
         }
 #endif

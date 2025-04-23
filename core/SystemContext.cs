@@ -113,9 +113,9 @@ namespace Simulation
         [Conditional("DEBUG")]
         private readonly void ThrowIfSystemTypeMismatch<T>() where T : unmanaged
         {
-            if (systemContainer.type != RuntimeTypeTable.GetAddress<T>())
+            if (!systemContainer.type.Is<T>())
             {
-                throw new SystemTypeMismatchException(typeof(T), systemContainer.Type);
+                throw new SystemTypeMismatchException(typeof(T), systemContainer.type);
             }
         }
 

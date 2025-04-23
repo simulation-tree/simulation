@@ -6,6 +6,7 @@ using Simulation.Pointers;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using Types;
 using Unmanaged;
 using Worlds;
 
@@ -220,9 +221,8 @@ namespace Simulation
             StartPrograms(simulatorWorld);
 
             using MemoryAddress messageContainer = MemoryAddress.AllocateValue(message);
-            RuntimeTypeHandle messageType = RuntimeTypeTable.GetHandle<T>();
+            TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             StatusCode statusCode = default;
-
             if (simulator->handlers.TryGetValue(messageType, out Array<MessageHandler> handlers))
             {
                 Span<MessageHandler> handlersSpan = handlers.AsSpan();
@@ -501,7 +501,7 @@ namespace Simulation
             }
 
             World simulatorWorld = simulator->world;
-            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
+            TypeMetadata systemType = TypeMetadata.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
             system.CollectMessageHandlers(new(systemType, simulator->handlers));
@@ -534,7 +534,7 @@ namespace Simulation
             }
 
             World simulatorWorld = simulator->world;
-            RuntimeTypeHandle systemType = RuntimeTypeTable.GetHandle<T>();
+            TypeMetadata systemType = TypeMetadata.GetOrRegister<T>();
             Trace.WriteLine($"Adding system `{typeof(T)}` to `{simulatorWorld}`");
 
             system.CollectMessageHandlers(new(systemType, simulator->handlers));
@@ -552,7 +552,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint otherSystemType = RuntimeTypeTable.GetAddress<O>();
+            TypeMetadata otherSystemType = TypeMetadata.GetOrRegister<O>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -573,7 +573,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint otherSystemType = RuntimeTypeTable.GetAddress<O>();
+            TypeMetadata otherSystemType = TypeMetadata.GetOrRegister<O>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -595,7 +595,7 @@ namespace Simulation
             MemoryAddress.ThrowIfDefault(simulator);
             ThrowIfSystemIsMissing<T>();
 
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeMetadata systemType = TypeMetadata.GetOrRegister<T>();
             Trace.WriteLine($"Removing system `{typeof(T)}` from `{simulator->world}`");
 
             Span<SystemContainer> systems = simulator->systems.AsSpan();
@@ -618,7 +618,7 @@ namespace Simulation
 
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             ref SystemContainer systemContainer = ref systems[index];
-            Trace.WriteLine($"Removing system `{systemContainer.Type}` from `{simulator->world}`");
+            Trace.WriteLine($"Removing system `{systemContainer.type}` from `{simulator->world}`");
 
             systemContainer.FinalizeAndDispose();
             simulator->systems.RemoveAt(index);
@@ -631,7 +631,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeMetadata systemType = TypeMetadata.GetOrRegister<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -656,7 +656,7 @@ namespace Simulation
         {
             MemoryAddress.ThrowIfDefault(simulator);
 
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeMetadata systemType = TypeMetadata.GetOrRegister<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
@@ -677,7 +677,7 @@ namespace Simulation
         [Conditional("DEBUG")]
         public readonly void ThrowIfSystemIsMissing<T>() where T : unmanaged, ISystem
         {
-            nint systemType = RuntimeTypeTable.GetAddress<T>();
+            TypeMetadata systemType = TypeMetadata.GetOrRegister<T>();
             Span<SystemContainer> systems = simulator->systems.AsSpan();
             for (int i = 0; i < systems.Length; i++)
             {
