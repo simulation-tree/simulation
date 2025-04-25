@@ -90,7 +90,8 @@ state of the system can be overwritten using the `Write()` function in `Start()`
 public readonly partial struct ExampleSystem : ISystem
 {
     private readonly int initialData;
-    private readonly SystemContext context;
+    private readonly World simulatorWorld;
+    private readonly List<double> numbers;
 
     [Obsolete("Default constructor not supported", true)]
     public ExampleSystem() { } //doing this to enforce the public constructor below
@@ -100,17 +101,18 @@ public readonly partial struct ExampleSystem : ISystem
         this.initialData = initialData;
     }
 
-    private ExampleSystem(int initialData, SystemContext context)
+    private ExampleSystem(int initialData, World simulatorWorld)
     {
         this.initialData = initialData;
-        this.context = context;
+        this.simulatorWorld = simulatorWorld;
+        numbers = new();
     }
 
     void ISystem.Start(in SystemContext context, in World world)
     {
         if (context.IsSimulatorWorld(world))
         {
-            context.Write(new ExampleSystem(initialData, context));
+            context.Write(new ExampleSystem(initialData, context.SimulatorWorld));
         }
     }
 
@@ -198,6 +200,78 @@ public partial struct ExampleProgram : IProgram<ExampleProgram>
 A program is finished when the status code from `Update()` is neither `default` or `StatusCode.Continue`.
 This status code will then be available in `Finish()`. If the program is finished because
 the simulator is disposed before the program decides to, the status code will be `StatusCode.Termination`.
+
+### Message handling
+
+Systems can also be message handlers. This is done by implementing the `ISystem.CollectMessageHandlers()`
+function, and then adding all of the handler functions for each type of message:
+
+```cs
+public struct StoreNumber 
+{
+    public double number;
+
+    public StoreNumber(double number)
+    {
+        this.number = number;
+    }
+}
+
+public readonly struct ExampleSystem : ISystem
+{
+    unsafe readonly void ISystem.CollectMessageHandlers(MessageHandlerCollector collectors)
+    {
+        collectors.Add<StoreNumber>(&HandleStoreNumber);
+    }
+    
+    [UnmanagedCallersOnly]
+    private static StatusCode HandleStoreNumber(HandleMessage.Input input)
+    {
+        ref StoreNumber message = ref input.ReadMessage<StoreNumber>();
+        if (message.number < 0)
+        {
+            return StatusCode.Failure(0); //cant store negative numbers
+        }
+        else 
+        {
+            ref ExampleSystem system = ref input.ReadSystem<ExampleSystem>();
+            system.numbers.Add(message.number);
+            return StatusCode.Success(0); //successfully stored the number
+        }
+    }
+}
+```
+
+The intended return values are:
+- `StatusCode.Continue`: The message was received, but no handling was done
+- `StatusCode.Success`: Message was handled and completed the objective
+- `StatusCode.Failure`: Message was handled and attempting to complete it failed
+- `default`: Reserved to indicate that the message was not received by the system
+
+### Message requesting
+
+Assuming there's a system that handles `StoreNumber` and none to handle `double`
+messages:
+```cs
+//positive numbers do get added
+StatusCode result = contextOrSimulator.TryHandleMessage(new StoreNumber(13.37));
+Assert.That(result.IsSuccess, Is.True);
+Assert.That(result.IsFailure, Is.False);
+
+//negative numbers not allowed
+result = contextOrSimulator.TryHandleMessage(new StoreNumber(-1.0));
+Assert.That(result.IsSuccess, Is.False);
+Assert.That(result.IsFailure, Is.True);
+
+//when no system is registered to handle the message type of double
+result = contextOrSimulator.TryHandleMessage(13.37);
+Assert.That(result.IsSuccess, Is.False);
+Assert.That(result.IsFailure, Is.False);
+Assert.That(result == default, Is.True);
+```
+
+Messages can also be passed by referenced in case the message contains
+mutable data.
 
 ### Contributing and design
 
