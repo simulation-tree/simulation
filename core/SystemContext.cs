@@ -15,7 +15,7 @@ namespace Simulation
         /// <summary>
         /// The world that the <see cref="Simulation.Simulator"/> was created with.
         /// </summary>
-        public readonly World World => systemContainer.World;
+        public readonly World SimulatorWorld => systemContainer.World;
 
         /// <summary>
         /// The simulator that the context originates from.

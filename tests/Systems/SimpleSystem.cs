@@ -23,7 +23,7 @@ namespace Simulation.Tests
 
         void ISystem.Start(in SystemContext context, in World world)
         {
-            if (context.World == world)
+            if (context.SimulatorWorld == world)
             {
                 Entity entity = new(world); //1
                 entity.AddComponent(initialData);
@@ -32,7 +32,7 @@ namespace Simulation.Tests
 
         void ISystem.Update(in SystemContext context, in World world, in TimeSpan delta)
         {
-            if (context.World == world)
+            if (context.SimulatorWorld == world)
             {
                 Entity entity = new(world); //2
                 entity.AddComponent(false);
@@ -41,7 +41,7 @@ namespace Simulation.Tests
 
         void ISystem.Finish(in SystemContext context, in World world)
         {
-            if (context.World == world)
+            if (context.SimulatorWorld == world)
             {
                 Entity entity = new(world, 2);
                 entity.SetComponent(true);
