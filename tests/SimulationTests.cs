@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Types;
+﻿using Types;
 using Unmanaged.Tests;
 using Worlds;
 
@@ -32,10 +29,9 @@ namespace Simulation.Tests
             base.TearDown();
         }
 
-        protected async Task Simulate(World world, CancellationToken cancellation)
+        protected void Update()
         {
-            TimeSpan delta = simulator.Update();
-            await Task.Delay(delta, cancellation).ConfigureAwait(false);
+            simulator.Update();
         }
 
         protected virtual Schema CreateSchema()

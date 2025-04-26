@@ -293,7 +293,7 @@ namespace Simulation
         /// Updates all systems, all programs by advancing their time.
         /// </summary>
         /// <returns>The delta time that was used to update with.</returns>
-        public readonly TimeSpan Update()
+        public readonly void Update()
         {
             ref DateTime lastUpdateTime = ref simulator->lastUpdateTime;
             DateTime now = DateTime.UtcNow;
@@ -305,7 +305,6 @@ namespace Simulation
             TimeSpan delta = now - lastUpdateTime;
             lastUpdateTime = now;
             Update(delta);
-            return delta;
         }
 
         /// <summary>
