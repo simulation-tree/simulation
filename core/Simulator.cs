@@ -292,7 +292,6 @@ namespace Simulation
         /// <summary>
         /// Updates all systems, all programs by advancing their time.
         /// </summary>
-        /// <returns>The delta time that was used to update with.</returns>
         public readonly void Update()
         {
             ref DateTime lastUpdateTime = ref simulator->lastUpdateTime;
@@ -324,7 +323,7 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Only updates the systems forward with the simulator world first, then program worlds.
+        /// Updates only the systems forward with the simulator world first, then program worlds.
         /// </summary>
         public readonly void UpdateSystems(TimeSpan delta)
         {

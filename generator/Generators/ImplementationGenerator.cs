@@ -4,16 +4,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Immutable;
 using System.Threading;
+using static Simulation.Constants;
 
 namespace Simulation.Generators
 {
     [Generator(LanguageNames.CSharp)]
-    public class ImplementationGenerator : IIncrementalGenerator
+    internal class ImplementationGenerator : IIncrementalGenerator
     {
-        private const string MemoryAddressType = "Unmanaged.MemoryAddress";
-        private const string ProgramInterfaceType = "Simulation.IProgram";
-        private const string SystemInterfaceType = "Simulation.ISystem";
-
         private static readonly SourceBuilder source = new();
 
         void IIncrementalGenerator.Initialize(IncrementalGeneratorInitializationContext context)
@@ -37,11 +34,11 @@ namespace Simulation.Generators
                     foreach (INamedTypeSymbol interfaceSymbol in interfaces)
                     {
                         string interfaceTypeName = interfaceSymbol.ToDisplayString();
-                        if (interfaceTypeName == ProgramInterfaceType || ProgramInterfaceType.EndsWith("." + interfaceTypeName))
+                        if (interfaceTypeName == ProgramInterfaceTypeName || ProgramInterfaceTypeName.EndsWith("." + interfaceTypeName))
                         {
                             return new ProgramInput(typeDeclaration, typeSymbol);
                         }
-                        else if (interfaceTypeName == SystemInterfaceType || SystemInterfaceType.EndsWith("." + interfaceTypeName))
+                        else if (interfaceTypeName == SystemInterfaceTypeName || SystemInterfaceTypeName.EndsWith("." + interfaceTypeName))
                         {
                             return new SystemInput(typeDeclaration, typeSymbol);
                         }
@@ -88,7 +85,11 @@ namespace Simulation.Generators
                         }
                     }
 
-                    source.AppendLine($"//{method.Name}, {method.Parameters.Length}, {method.ReturnType}");
+                    source.AppendLine($"//{typeMember.Kind} = {method.Name}, {method.Parameters.Length}, {method.ReturnType}");
+                }
+                else
+                {
+                    source.AppendLine($"//{typeMember.Kind} = {typeMember.Name}");
                 }
             }
 
@@ -152,7 +153,7 @@ namespace Simulation.Generators
                         if (input is ProgramInput)
                         {
                             source.Append("static void StartProgram(Simulator simulator, ");
-                            source.Append(MemoryAddressType);
+                            source.Append(MemoryAddressTypeName);
                             source.Append(" allocation, World world)");
                             source.AppendLine();
 
@@ -180,7 +181,7 @@ namespace Simulation.Generators
                         if (input is ProgramInput)
                         {
                             source.Append("static StatusCode UpdateProgram(Simulator simulator, ");
-                            source.Append(MemoryAddressType);
+                            source.Append(MemoryAddressTypeName);
                             source.Append(" allocation, World world, TimeSpan delta)");
                             source.AppendLine();
 
@@ -208,7 +209,7 @@ namespace Simulation.Generators
                         if (input is ProgramInput)
                         {
                             source.Append("static void FinishProgram(Simulator simulator, ");
-                            source.Append(MemoryAddressType);
+                            source.Append(MemoryAddressTypeName);
                             source.Append(" allocation, World world, StatusCode statusCode)");
                             source.AppendLine();
 

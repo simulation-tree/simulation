@@ -51,7 +51,8 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Removes the system of type <typeparamref name="T"/> from the simulator.
+        /// Removes the system of type <typeparamref name="T"/> from the simulator
+        /// and disposes it.
         /// </summary>
         public readonly void RemoveSystem<T>() where T : unmanaged, ISystem
         {
