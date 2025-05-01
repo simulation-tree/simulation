@@ -30,13 +30,51 @@ namespace Simulation.Generators
             {
                 if (type is not null)
                 {
+                    //iterate through the types constructors, and skip this type if the default one is obsolete
+                    bool skip = false;
+                    foreach (ISymbol member in type.GetMembers())
+                    {
+                        if (member is IMethodSymbol methodSymbol)
+                        {
+                            if (methodSymbol.MethodKind == MethodKind.Constructor && methodSymbol.Parameters.Length == 0)
+                            {
+                                foreach (AttributeData attribute in methodSymbol.GetAttributes())
+                                {
+                                    if (attribute.AttributeClass?.ToDisplayString() == "System.ObsoleteAttribute")
+                                    {
+                                        skip = true;
+                                        break;
+                                    }
+                                }
+
+                                if (skip)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (skip)
+                    {
+                        continue;
+                    }
+
                     types.Add(type);
                 }
             }
 
             if (types.Count > 1) //dont generate if just 1
             {
-                string source = Generate(types, out string typeName);
+                //sort types by their declared order
+                ITypeSymbol[] sortedTypes = new ITypeSymbol[types.Count];
+                for (int i = 0; i < types.Count; i++)
+                {
+                    sortedTypes[i] = types[i];
+                }
+
+                sortedTypes = sortedTypes.OrderBy(GetSortOrderHint).ToArray();
+                string source = Generate(sortedTypes, out string typeName);
                 context.AddSource($"{typeName}.generated.cs", source);
             }
         }
@@ -90,15 +128,6 @@ namespace Simulation.Generators
                     assemblyName = assemblyName.Substring(0, assemblyName.Length - 5);
                 }
             }
-
-            //sort types by their declared order
-            ITypeSymbol[] sortedTypes = new ITypeSymbol[types.Count];
-            for (int i = 0; i < types.Count; i++)
-            {
-                sortedTypes[i] = types[i];
-            }
-
-            sortedTypes = sortedTypes.OrderBy(SystemSortSelector).ToArray();
 
             SourceBuilder source = new();
             source.Append("using ");
@@ -165,11 +194,11 @@ namespace Simulation.Generators
                         source.AppendLine();
                         source.BeginGroup();
                         {
-                            source.Append("if (systemContainer.simulator.World == world)");
+                            source.Append("if (systemContainer.IsSimulatorWorld(world))");
                             source.AppendLine();
                             source.BeginGroup();
                             {
-                                foreach (ITypeSymbol systemType in sortedTypes)
+                                foreach (ITypeSymbol systemType in types)
                                 {
                                     source.Append("systemContainer.simulator.AddSystem(new ");
                                     source.Append(systemType.ToDisplayString());
@@ -200,13 +229,13 @@ namespace Simulation.Generators
                         source.AppendLine();
                         source.BeginGroup();
                         {
-                            source.Append("if (systemContainer.simulator.World == world)");
+                            source.Append("if (systemContainer.IsSimulatorWorld(world))");
                             source.AppendLine();
                             source.BeginGroup();
                             {
-                                for (int i = sortedTypes.Length - 1; i >= 0; i--)
+                                for (int i = types.Count - 1; i >= 0; i--)
                                 {
-                                    ITypeSymbol systemType = sortedTypes[i];
+                                    ITypeSymbol systemType = types[i];
                                     source.Append("systemContainer.simulator.RemoveSystem<");
                                     source.Append(systemType.ToDisplayString());
                                     source.Append(">();");
@@ -285,7 +314,7 @@ namespace Simulation.Generators
             return source.ToString();
         }
 
-        private static int SystemSortSelector(ITypeSymbol typeSymbol)
+        private static int GetSortOrderHint(ITypeSymbol typeSymbol)
         {
             foreach (AttributeData attribute in typeSymbol.GetAttributes())
             {

@@ -11,7 +11,7 @@ namespace Simulation.Tests
 
         void ISystem.Start(in SystemContext context, in World world)
         {
-            if (context.SimulatorWorld == world)
+            if (context.IsSimulatorWorld(world))
             {
                 context.AddSystem(new SimpleSystem(4));
             }
@@ -23,7 +23,7 @@ namespace Simulation.Tests
 
         void ISystem.Finish(in SystemContext context, in World world)
         {
-            if (context.SimulatorWorld == world)
+            if (context.IsSimulatorWorld(world))
             {
                 context.RemoveSystem<SimpleSystem>();
             }
