@@ -17,7 +17,7 @@
 		<Title>Simulation Core</Title>
 		<RootNamespace>Simulation</RootNamespace>
 		<PackageId />
-		<GenerateDocumentationFile>False</GenerateDocumentationFile>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<ItemGroup>

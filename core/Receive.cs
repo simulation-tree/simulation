@@ -1,5 +1,10 @@
-﻿namespace Simulation
-{
+﻿using Unmanaged;
 
-    public delegate void Receive(ref Message message);
+namespace Simulation
+{
+    /// <summary>
+    /// Callback for receiving a <paramref name="message"/>.
+    /// </summary>
+
+    public delegate void Receive(MemoryAddress message);
 }

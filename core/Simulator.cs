@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Types;
+using Unmanaged;
 using Worlds;
 
 namespace Simulation
@@ -20,7 +21,8 @@ namespace Simulation
         public readonly World world;
 
         private readonly Dictionary<TypeMetadata, List<Receive>> receiversMap;
-        private readonly List<SystemContainer> systems;
+        private readonly List<ISystem> systems;
+        private readonly List<MessageReceiverLocator[]> receiverLocators;
         private DateTime lastUpdateTime;
         private double runTime;
         private bool disposed;
@@ -59,17 +61,13 @@ namespace Simulation
         /// <summary>
         /// All systems added.
         /// </summary>
-        public IEnumerable<ISystem> Systems
+        public IReadOnlyList<ISystem> Systems
         {
             get
             {
                 ThrowIfDisposed();
 
-                int count = systems.Count;
-                for (int i = 0; i < count; i++)
-                {
-                    yield return GetSystem(i);
-                }
+                return systems;
             }
         }
 
@@ -81,6 +79,7 @@ namespace Simulation
             this.world = world;
             receiversMap = new(4);
             systems = new(4);
+            receiverLocators = new(4);
             runTime = 0;
             lastUpdateTime = DateTime.UtcNow;
         }
@@ -93,10 +92,6 @@ namespace Simulation
             ThrowIfDisposed();
 
             disposed = true;
-            foreach (SystemContainer system in systems)
-            {
-                system.Dispose();
-            }
         }
 
         /// <summary>
@@ -106,27 +101,34 @@ namespace Simulation
         {
             ThrowIfDisposed();
 
-            SystemContainer container = SystemContainer.Create(system);
             if (system is IListener listener)
             {
                 int count = listener.Count;
+                MessageReceiverLocator[] locators = new MessageReceiverLocator[count];
                 Span<MessageHandler> handlers = stackalloc MessageHandler[count];
                 listener.CollectMessageHandlers(handlers);
-                foreach (MessageHandler handler in handlers)
+                for (int i = 0; i < count; i++)
                 {
+                    MessageHandler handler = handlers[i];
                     if (!receiversMap.TryGetValue(handler.type, out List<Receive>? receivers))
                     {
                         receivers = new(4);
                         receiversMap.Add(handler.type, receivers);
                     }
 
-                    container.receiverLocators.Add(new(handler.type, receivers.Count));
+                    locators[i] = new(handler.type, receivers.Count);
                     receivers.Add((Receive)handler.receiver.Target!);
                     handler.receiver.Free();
                 }
+
+                receiverLocators.Add(locators);
+            }
+            else
+            {
+                receiverLocators.Add(Array.Empty<MessageReceiverLocator>());
             }
 
-            systems.Add(container);
+            systems.Add(system);
         }
 
         /// <summary>
@@ -141,10 +143,9 @@ namespace Simulation
 
             for (int i = 0; i < systems.Count; i++)
             {
-                SystemContainer container = systems[i];
-                if (container.System is T system)
+                if (systems[i] is T system)
                 {
-                    Remove(container, i);
+                    Remove(i);
                     if (dispose && system is IDisposable disposableSystem)
                     {
                         disposableSystem.Dispose();
@@ -163,17 +164,16 @@ namespace Simulation
         /// Throws an exception if the system is not found.
         /// </para>
         /// </summary>
-        public void Remove(object system)
+        public void Remove(ISystem system)
         {
             ThrowIfDisposed();
             ThrowIfSystemIsMissing(system);
 
             for (int i = 0; i < systems.Count; i++)
             {
-                SystemContainer container = systems[i];
-                if (container.System == system)
+                if (systems[i] == system)
                 {
-                    Remove(container, i);
+                    Remove(i);
                     return;
                 }
             }
@@ -181,14 +181,14 @@ namespace Simulation
             throw new InvalidOperationException($"System instance {system} not found");
         }
 
-        private void Remove(SystemContainer container, int index)
+        private void Remove(int index)
         {
             ThrowIfDisposed();
 
-            ReadOnlySpan<MessageReceiverLocator> receiverLocators = container.receiverLocators.AsSpan();
-            for (int i = 0; i < receiverLocators.Length; i++)
+            MessageReceiverLocator[] locators = receiverLocators[index];
+            for (int i = 0; i < locators.Length; i++)
             {
-                MessageReceiverLocator locator = receiverLocators[i];
+                MessageReceiverLocator locator = locators[i];
                 List<Receive> receivers = receiversMap[locator.type];
                 receivers.RemoveAt(locator.index);
 
@@ -197,14 +197,14 @@ namespace Simulation
                     //the removed listener wasnt last, so need to shift the rest of the list
                     for (int c = 0; c < systems.Count; c++)
                     {
-                        SystemContainer system = systems[c];
-                        Span<MessageReceiverLocator> locators = system.receiverLocators.AsSpan();
-                        for (int j = 0; j < locators.Length; j++)
+                        MessageReceiverLocator[] otherLocators = receiverLocators[c];
+                        for (int j = 0; j < otherLocators.Length; j++)
                         {
-                            ref MessageReceiverLocator otherLocator = ref locators[j];
+                            MessageReceiverLocator otherLocator = otherLocators[j];
                             if (otherLocator.type == locator.type && otherLocator.index > locator.index)
                             {
                                 otherLocator.index--;
+                                otherLocators[j] = otherLocator;
                             }
                         }
                     }
@@ -212,7 +212,6 @@ namespace Simulation
             }
 
             systems.RemoveAt(index);
-            container.Dispose();
         }
 
         /// <summary>
@@ -224,7 +223,7 @@ namespace Simulation
 
             for (int i = 0; i < systems.Count; i++)
             {
-                if (systems[i].System is T)
+                if (systems[i] is T)
                 {
                     return true;
                 }
@@ -246,7 +245,7 @@ namespace Simulation
 
             for (int i = 0; i < systems.Count; i++)
             {
-                if (systems[i].System is T system)
+                if (systems[i] is T system)
                 {
                     return system;
                 }
@@ -264,7 +263,7 @@ namespace Simulation
 
             for (int i = 0; i < systems.Count; i++)
             {
-                if (systems[i].System is T foundSystem)
+                if (systems[i] is T foundSystem)
                 {
                     system = foundSystem;
                     return true;
@@ -273,17 +272,6 @@ namespace Simulation
 
             system = default;
             return false;
-        }
-
-        /// <summary>
-        /// Retrieves the system at the given <paramref name="index"/>.
-        /// </summary>
-        public ISystem GetSystem(int index)
-        {
-            ThrowIfDisposed();
-            ThrowIfIndexIsOutOfBounds(index);
-
-            return systems[index].System;
         }
 
         /// <summary>
@@ -348,13 +336,11 @@ namespace Simulation
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
-                Message container = Message.Create(message);
+                using MemoryAddress container = MemoryAddress.AllocateValue(message);
                 for (int i = 0; i < receivers.Count; i++)
                 {
-                    receivers[i].Invoke(ref container);
+                    receivers[i].Invoke(container);
                 }
-
-                container.Dispose();
             }
         }
 
@@ -368,14 +354,13 @@ namespace Simulation
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
-                Message container = Message.Create(message);
+                using MemoryAddress container = MemoryAddress.AllocateValue(message);
                 for (int i = 0; i < receivers.Count; i++)
                 {
-                    receivers[i].Invoke(ref container);
+                    receivers[i].Invoke(container);
                 }
 
-                message = container.data.Read<T>();
-                container.Dispose();
+                message = container.Read<T>();
             }
         }
 
@@ -384,7 +369,7 @@ namespace Simulation
         {
             for (int i = 0; i < systems.Count; i++)
             {
-                if (systems[i].System is T)
+                if (systems[i] is T)
                 {
                     return;
                 }
@@ -398,7 +383,7 @@ namespace Simulation
         {
             for (int i = 0; i < systems.Count; i++)
             {
-                if (systems[i].System == system)
+                if (systems[i] == system)
                 {
                     return;
                 }
