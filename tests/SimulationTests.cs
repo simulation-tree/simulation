@@ -1,31 +1,26 @@
-﻿using Types;
-using Unmanaged.Tests;
+﻿using Unmanaged.Tests;
 using Worlds;
 
 namespace Simulation.Tests
 {
     public abstract class SimulationTests : UnmanagedTests
     {
-        protected World world;
-        protected Simulator simulator;
-
-        static SimulationTests()
-        {
-            MetadataRegistry.Load<SimulationMetadataBank>();
-            MetadataRegistry.Load<SimulationTestsMetadataBank>();
-        }
+        public Simulator simulator;
+        public World world;
 
         protected override void SetUp()
         {
             base.SetUp();
-            world = CreateWorld();
+            world = new(CreateSchema());
             simulator = new(world);
         }
 
         protected override void TearDown()
         {
             simulator.Dispose();
+            simulator = default;
             world.Dispose();
+            world = default;
             base.TearDown();
         }
 
@@ -34,18 +29,24 @@ namespace Simulation.Tests
             simulator.Update();
         }
 
-        protected virtual Schema CreateSchema()
+        protected void Update(double deltaTime)
         {
-            Schema schema = new();
-            schema.Load<SimulationSchemaBank>();
-            schema.Load<SimulationTestsSchemaBank>();
-            return schema;
+            simulator.Update(deltaTime);
         }
 
-        protected World CreateWorld()
+        protected void Broadcast<T>(T message) where T : unmanaged
         {
-            World world = new(CreateSchema());
-            return world;
+            simulator.Broadcast(message);
+        }
+
+        protected void Broadcast<T>(ref T message) where T : unmanaged
+        {
+            simulator.Broadcast(ref message);
+        }
+
+        protected virtual Schema CreateSchema()
+        {
+            return new();
         }
     }
 }
