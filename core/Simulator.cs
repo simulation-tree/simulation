@@ -193,6 +193,12 @@ namespace Simulation
             return false;
         }
 
+        /// <summary>
+        /// Retrieves the first system of type <typeparamref name="T"/>.
+        /// <para>
+        /// An exception will be thrown if a system is not found.
+        /// </para>
+        /// </summary>
         public readonly T GetFirst<T>() where T : ISystem
         {
             ThrowIfSystemIsMissing<T>();
@@ -209,6 +215,9 @@ namespace Simulation
             throw new InvalidOperationException($"System of type {typeof(T)} not found");
         }
 
+        /// <summary>
+        /// Tries to retrieve the first system of type <typeparamref name="T"/>.
+        /// </summary>
         public readonly bool TryGetFirst<T>([NotNullWhen(true)] out T? system) where T : notnull, ISystem
         {
             ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
