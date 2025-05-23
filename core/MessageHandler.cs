@@ -1,49 +1,21 @@
-﻿using Simulation.Functions;
-using System;
-using Types;
+﻿using Types;
 
 namespace Simulation
 {
-    internal readonly struct MessageHandler : IEquatable<MessageHandler>
+    public readonly struct MessageHandler
     {
-        public readonly TypeMetadata systemType;
-        public readonly HandleMessage function;
+        public readonly TypeMetadata type;
+        public readonly MessageReceiver receiver;
 
-        public MessageHandler(TypeMetadata systemType, HandleMessage function)
+        public MessageHandler(TypeMetadata type, MessageReceiver receiver)
         {
-            this.systemType = systemType;
-            this.function = function;
+            this.type = type;
+            this.receiver = receiver;
         }
 
-        public readonly override bool Equals(object? obj)
+        public static MessageHandler Get<L, M>(L listener) where L : IListener<M> where M : unmanaged
         {
-            return obj is MessageHandler handler && Equals(handler);
-        }
-
-        public readonly bool Equals(MessageHandler other)
-        {
-            return systemType == other.systemType && function == other.function;
-        }
-
-        public readonly override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + systemType.GetHashCode();
-                hash = hash * 23 + function.GetHashCode();
-                return hash;
-            }
-        }
-
-        public static bool operator ==(MessageHandler left, MessageHandler right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(MessageHandler left, MessageHandler right)
-        {
-            return !(left == right);
+            return new(TypeMetadata.GetOrRegister<M>(), MessageReceiver.Get<L, M>(listener));
         }
     }
 }

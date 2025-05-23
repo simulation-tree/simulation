@@ -2,36 +2,27 @@
 
 [![Test](https://github.com/simulation-tree/simulation/actions/workflows/test.yml/badge.svg)](https://github.com/simulation-tree/simulation/actions/workflows/test.yml)
 
-Library providing a way to organize systems, and executing programs.
+Library providing a way to organize and update systems with support for message handling.
 
 ### Running simulators
 
-Simulators contain and update systems, and iterate over programs found
-in the world that the simulator is created with:
+Simulators contain and update systems:
 ```cs
-public static int Main()
+public static void Main()
 {
-    StatusCode statusCode;
-    using (World world = new())
-    {
-        using (Simulator simulator = new(world))
-        {
-            simulator.AddSystem(new AllSystems());
-            using (Program program = Program.Create(world, new ExampleProgram(100)))
-            {
-                while (!program.IsFinished(out statusCode))
-                {
-                    simulator.Update();
-                }
-                
-                Console.WriteLine(program.Read<ExampleProgram>().value);
-            }
+    using World world = new();
+    using (Simulator simulator = new(world);
 
-            simulator.RemoveSystem<AllSystems>();
-        }
+    simulator.AddSystem(new ProgramSystems());
+    while (simulator.Update(world))
+    {
     }
 
-    return statusCode.IsSuccess ? 0 : 1;
+    simulator.RemoveSystem<ProgramSystems>();
+}
+
+public class ProgramSystems
+{
 }
 ```
 

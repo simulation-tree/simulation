@@ -1,5 +1,4 @@
-﻿using Collections.Generic;
-using Unmanaged;
+﻿using System.Threading;
 using Worlds;
 
 namespace Simulation.Tests
@@ -7,61 +6,107 @@ namespace Simulation.Tests
     public class SimulatorTests : SimulationTests
     {
         [Test]
-        public void VerifyOrderOfOperations()
+        public void CreatingAndDisposing()
         {
-            using World simulatorWorld = CreateWorld();
-            using (Simulator simulator = new(simulatorWorld))
-            {
-                using List<World> systemStartedWorlds = new();
-                using List<World> programStartedWorlds = new();
-                using List<World> systemUpdatedWorlds = new();
-                using List<World> systemFinishedWorlds = new();
-                using MemoryAddress disposed = MemoryAddress.AllocateValue(false);
-                simulator.AddSystem(new DummySystem(systemStartedWorlds, systemUpdatedWorlds, systemFinishedWorlds, disposed));
-                World programWorld;
-                using (Program program = Program.Create(simulatorWorld, new DummyProgram(4, programStartedWorlds)))
-                {
-                    programWorld = program.ProgramWorld;
-                    simulator.Update();
+            using World world = new();
+            Simulator simulator = new(world);
+            Assert.That(simulator.IsDisposed, Is.False);
+            simulator.Dispose();
+            Assert.That(simulator.IsDisposed, Is.True);
 
-                    Assert.That(systemStartedWorlds.Count, Is.EqualTo(2));
-                    Assert.That(systemStartedWorlds[0], Is.EqualTo(simulatorWorld));
-                    Assert.That(systemStartedWorlds[1], Is.EqualTo(programWorld));
+            simulator = new(world);
+            Assert.That(simulator.IsDisposed, Is.False);
+            simulator.Dispose();
+            Assert.That(simulator.IsDisposed, Is.True);
+        }
 
-                    Assert.That(programStartedWorlds.Count, Is.EqualTo(1));
-                    Assert.That(programStartedWorlds[0], Is.EqualTo(programWorld));
+        [Test]
+        public void AddingAndRemovingSystems()
+        {
+            Assert.That(simulator.Count, Is.EqualTo(0));
+            EmptySystem system = new();
+            simulator.Add(system);
+            Assert.That(simulator.Count, Is.EqualTo(1));
+            Assert.That(simulator.Contains<EmptySystem>(), Is.True);
+            Assert.That(simulator.Systems, Has.Exactly(1).EqualTo(system));
+            EmptySystem removedSystem = simulator.Remove<EmptySystem>();
+            Assert.That(simulator.Count, Is.EqualTo(0));
+            Assert.That(removedSystem, Is.SameAs(system));
+        }
 
-                    Assert.That(systemUpdatedWorlds.Count, Is.EqualTo(2));
-                    Assert.That(systemUpdatedWorlds[0], Is.EqualTo(simulatorWorld));
-                    Assert.That(systemUpdatedWorlds[1], Is.EqualTo(programWorld));
+        [Test]
+        public void BroadcastingMessages()
+        {
+            TimeSystem system = new();
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(0f));
+            simulator.Add(system);
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(1f));
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(2f));
+            simulator.Remove<TimeSystem>();
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(2f));
+        }
 
-                    simulator.Update();
+        [Test]
+        public void BroadcastingWithSystemsOutOfOrder()
+        {
+            TimeSystem system = new();
+            using TextSystem text = new();
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(0f));
+            simulator.Add(system);
+            simulator.Add(text);
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(1f));
+            Assert.That(text.Text.ToString(), Is.EqualTo("1"));
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(2f));
+            Assert.That(text.Text.ToString(), Is.EqualTo("11"));
+            simulator.Remove<TimeSystem>();
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(2f));
+            Assert.That(text.Text.ToString(), Is.EqualTo("111"));
+            simulator.Remove<TextSystem>(false);
+            Broadcast(new UpdateMessage(1f));
+            Assert.That(system.time, Is.EqualTo(2f));
+            Assert.That(text.Text.ToString(), Is.EqualTo("111"));
+        }
 
-                    Assert.That(systemUpdatedWorlds.Count, Is.EqualTo(4));
-                    Assert.That(systemUpdatedWorlds[2], Is.EqualTo(simulatorWorld));
-                    Assert.That(systemUpdatedWorlds[3], Is.EqualTo(programWorld));
+        [Test]
+        public void UpdatingSimulatorForward()
+        {
+            TimeSystem system = new();
+            simulator.Add(system);
 
-                    simulator.Update();
+            Update(20);
+            Assert.That(simulator.Time, Is.EqualTo(20));
+            Assert.That(system.time, Is.EqualTo(20));
 
-                    Assert.That(systemUpdatedWorlds.Count, Is.EqualTo(6));
-                    Assert.That(systemUpdatedWorlds[4], Is.EqualTo(simulatorWorld));
-                    Assert.That(systemUpdatedWorlds[5], Is.EqualTo(programWorld));
+            Update(10);
+            Assert.That(simulator.Time, Is.EqualTo(30));
+            Assert.That(system.time, Is.EqualTo(30));
 
-                    simulator.Update();
+            Update();
+            Thread.Sleep(1000);
+            Update();
+            Assert.That(simulator.Time, Is.EqualTo(31).Within(0.01));
+            Assert.That(system.time, Is.EqualTo(31).Within(0.01));
 
-                    Assert.That(systemUpdatedWorlds.Count, Is.EqualTo(8));
-                    Assert.That(systemUpdatedWorlds[6], Is.EqualTo(simulatorWorld));
-                    Assert.That(systemUpdatedWorlds[7], Is.EqualTo(programWorld));
-                }
+            Update(5);
+            Assert.That(simulator.Time, Is.EqualTo(36).Within(0.01));
+            Assert.That(system.time, Is.EqualTo(36).Within(0.01));
 
-                simulator.RemoveSystem<DummySystem>();
+            Update(0);
+            Assert.That(simulator.Time, Is.EqualTo(36).Within(0.01));
+            Assert.That(system.time, Is.EqualTo(36).Within(0.01));
 
-                Assert.That(disposed.Read<bool>(), Is.True);
-
-                Assert.That(systemFinishedWorlds.Count, Is.EqualTo(2));
-                Assert.That(systemFinishedWorlds[0], Is.EqualTo(programWorld));
-                Assert.That(systemFinishedWorlds[1], Is.EqualTo(simulatorWorld));
-            }
+            simulator.Remove(system);
+            Update(10);
+            Assert.That(simulator.Time, Is.EqualTo(46).Within(0.01));
+            Assert.That(system.time, Is.EqualTo(36).Within(0.01));
         }
     }
 }
