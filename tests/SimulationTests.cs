@@ -19,7 +19,6 @@ namespace Simulation.Tests
 
         protected override void TearDown()
         {
-            simulator?.Dispose();
             simulator = default;
             world.Dispose();
             world = default;

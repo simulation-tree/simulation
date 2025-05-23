@@ -13,7 +13,7 @@ namespace Simulation
     /// Contains systems for updating and broadcasting messages to.
     /// </summary>
     [SkipLocalsInit]
-    public class Simulator : IDisposable
+    public class Simulator
     {
         /// <summary>
         /// The world this simulator is created for.
@@ -24,53 +24,16 @@ namespace Simulation
         private readonly List<object> systems;
         private readonly List<ISystem> updatingSystems;
         private readonly List<MessageReceiverLocator[]> receiverLocators;
-        private DateTime lastUpdateTime;
-        private double runTime;
-        private bool disposed;
-
-        /// <summary>
-        /// Checks if the simulator has been disposed.
-        /// </summary>
-        public bool IsDisposed => disposed;
-
-        /// <summary>
-        /// The total amount of time the simulator has progressed.
-        /// </summary>
-        public double Time
-        {
-            get
-            {
-                ThrowIfDisposed();
-
-                return runTime;
-            }
-        }
 
         /// <summary>
         /// Amount of systems added.
         /// </summary>
-        public int Count
-        {
-            get
-            {
-                ThrowIfDisposed();
-
-                return systems.Count;
-            }
-        }
+        public int Count => systems.Count;
 
         /// <summary>
         /// All systems added.
         /// </summary>
-        public IReadOnlyList<object> Systems
-        {
-            get
-            {
-                ThrowIfDisposed();
-
-                return systems;
-            }
-        }
+        public IReadOnlyList<object> Systems => systems;
 
         /// <summary>
         /// Creates a new simulator.
@@ -82,18 +45,6 @@ namespace Simulation
             systems = new(4);
             updatingSystems = new(4);
             receiverLocators = new(4);
-            runTime = 0;
-            lastUpdateTime = DateTime.UtcNow;
-        }
-
-        /// <summary>
-        /// Disposes the simulator.
-        /// </summary>
-        public void Dispose()
-        {
-            ThrowIfDisposed();
-
-            disposed = true;
         }
 
         /// <summary>
@@ -101,8 +52,6 @@ namespace Simulation
         /// </summary>
         public void Add<T>(T system) where T : class
         {
-            ThrowIfDisposed();
-
             AddListeners(system);
             if (system is ISystem updatingSystem)
             {
@@ -119,7 +68,6 @@ namespace Simulation
         /// <returns>The removed system.</returns>
         public T Remove<T>(bool dispose = true) where T : class
         {
-            ThrowIfDisposed();
             ThrowIfSystemIsMissing<T>();
 
             int count = systems.Count;
@@ -154,7 +102,6 @@ namespace Simulation
         /// </summary>
         public void Remove(object system)
         {
-            ThrowIfDisposed();
             ThrowIfSystemIsMissing(system);
 
             int count = systems.Count;
@@ -240,8 +187,6 @@ namespace Simulation
         /// </summary>
         public bool Contains<T>() where T : class
         {
-            ThrowIfDisposed();
-
             int count = systems.Count;
             for (int i = 0; i < count; i++)
             {
@@ -262,7 +207,6 @@ namespace Simulation
         /// </summary>
         public T GetFirst<T>() where T : class
         {
-            ThrowIfDisposed();
             ThrowIfSystemIsMissing<T>();
 
             int count = systems.Count;
@@ -282,8 +226,6 @@ namespace Simulation
         /// </summary>
         public bool TryGetFirst<T>([NotNullWhen(true)] out T? system) where T : class
         {
-            ThrowIfDisposed();
-
             int count = systems.Count;
             for (int i = 0; i < count; i++)
             {
@@ -303,36 +245,10 @@ namespace Simulation
         /// </summary>
         public void Update()
         {
-            ThrowIfDisposed();
-
-            DateTime timeNow = DateTime.UtcNow;
-            double deltaTime = (timeNow - lastUpdateTime).TotalSeconds;
-            lastUpdateTime = timeNow;
-            runTime += deltaTime;
-
             int count = updatingSystems.Count;
             for (int i = 0; i < count; i++)
             {
-                updatingSystems[i].Update(this, deltaTime);
-            }
-        }
-
-        /// <summary>
-        /// Updates all systems forward and retreives the delta time.
-        /// </summary>
-        public void Update(out double deltaTime)
-        {
-            ThrowIfDisposed();
-
-            DateTime timeNow = DateTime.UtcNow;
-            deltaTime = (timeNow - lastUpdateTime).TotalSeconds;
-            lastUpdateTime = timeNow;
-            runTime += deltaTime;
-
-            int count = updatingSystems.Count;
-            for (int i = 0; i < count; i++)
-            {
-                updatingSystems[i].Update(this, deltaTime);
+                updatingSystems[i].Update(this, 0);
             }
         }
 
@@ -341,11 +257,6 @@ namespace Simulation
         /// </summary>
         public void Update(double deltaTime)
         {
-            ThrowIfDisposed();
-
-            lastUpdateTime = DateTime.UtcNow;
-            runTime += deltaTime;
-
             int count = updatingSystems.Count;
             for (int i = 0; i < count; i++)
             {
@@ -358,8 +269,6 @@ namespace Simulation
         /// </summary>
         public void Broadcast<T>(T message) where T : unmanaged
         {
-            ThrowIfDisposed();
-
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
@@ -377,8 +286,6 @@ namespace Simulation
         /// </summary>
         public void Broadcast<T>(ref T message) where T : unmanaged
         {
-            ThrowIfDisposed();
-
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
@@ -427,15 +334,6 @@ namespace Simulation
             if (index < 0 || index >= systems.Count)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), $"Index {index} is out of bounds. Count: {systems.Count}");
-            }
-        }
-
-        [Conditional("DEBUG")]
-        private void ThrowIfDisposed()
-        {
-            if (disposed)
-            {
-                throw new ObjectDisposedException(nameof(Simulator), "Simulator has been disposed");
             }
         }
     }
