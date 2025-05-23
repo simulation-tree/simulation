@@ -5,8 +5,10 @@ namespace Simulation.Tests
 {
     public abstract class SimulationTests : UnmanagedTests
     {
-        public Simulator simulator;
+        private Simulator? simulator;
         public World world;
+
+        public Simulator Simulator => simulator ?? throw new("Simulator is not initialized");
 
         protected override void SetUp()
         {
@@ -17,31 +19,11 @@ namespace Simulation.Tests
 
         protected override void TearDown()
         {
-            simulator.Dispose();
+            simulator?.Dispose();
             simulator = default;
             world.Dispose();
             world = default;
             base.TearDown();
-        }
-
-        protected void Update()
-        {
-            simulator.Update();
-        }
-
-        protected void Update(double deltaTime)
-        {
-            simulator.Update(deltaTime);
-        }
-
-        protected void Broadcast<T>(T message) where T : unmanaged
-        {
-            simulator.Broadcast(message);
-        }
-
-        protected void Broadcast<T>(ref T message) where T : unmanaged
-        {
-            simulator.Broadcast(ref message);
         }
 
         protected virtual Schema CreateSchema()

@@ -1,5 +1,5 @@
-﻿using Collections.Generic;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -12,40 +12,59 @@ namespace Simulation
     /// Contains systems for updating and broadcasting messages to.
     /// </summary>
     [SkipLocalsInit]
-    public struct Simulator : IDisposable
+    public class Simulator : IDisposable
     {
         /// <summary>
         /// The world this simulator is created for.
         /// </summary>
         public readonly World world;
 
-        private Dictionary<TypeMetadata, List<MessageReceiver>> receiversMap;
-        private List<SystemContainer> systems;
+        private readonly Dictionary<TypeMetadata, List<Receive>> receiversMap;
+        private readonly List<SystemContainer> systems;
         private DateTime lastUpdateTime;
         private double runTime;
+        private bool disposed;
 
         /// <summary>
         /// Checks if the simulator has been disposed.
         /// </summary>
-        public readonly bool IsDisposed => systems.IsDisposed;
+        public bool IsDisposed => disposed;
 
         /// <summary>
         /// The total amount of time the simulator has progressed.
         /// </summary>
-        public readonly double Time => runTime;
+        public double Time
+        {
+            get
+            {
+                ThrowIfDisposed();
+
+                return runTime;
+            }
+        }
 
         /// <summary>
         /// Amount of systems added.
         /// </summary>
-        public readonly int Count => systems.Count;
+        public int Count
+        {
+            get
+            {
+                ThrowIfDisposed();
+
+                return systems.Count;
+            }
+        }
 
         /// <summary>
         /// All systems added.
         /// </summary>
-        public readonly System.Collections.Generic.IEnumerable<ISystem> Systems
+        public IEnumerable<ISystem> Systems
         {
             get
             {
+                ThrowIfDisposed();
+
                 int count = systems.Count;
                 for (int i = 0; i < count; i++)
                 {
@@ -54,12 +73,6 @@ namespace Simulation
             }
         }
 
-#if NET
-        [Obsolete("Default constructor not supported", true)]
-        public Simulator()
-        {
-        }
-#endif
         /// <summary>
         /// Creates a new simulator.
         /// </summary>
@@ -77,26 +90,22 @@ namespace Simulation
         /// </summary>
         public void Dispose()
         {
-            Span<SystemContainer> systemsSpan = systems.AsSpan();
-            foreach (SystemContainer system in systemsSpan)
+            ThrowIfDisposed();
+
+            disposed = true;
+            foreach (SystemContainer system in systems)
             {
                 system.Dispose();
             }
-
-            systems.Dispose();
-            foreach (List<MessageReceiver> receivers in receiversMap.Values)
-            {
-                receivers.Dispose();
-            }
-
-            receiversMap.Dispose();
         }
 
         /// <summary>
         /// Adds the given <paramref name="system"/>.
         /// </summary>
-        public readonly void Add<T>(T system) where T : ISystem
+        public void Add<T>(T system) where T : ISystem
         {
+            ThrowIfDisposed();
+
             SystemContainer container = SystemContainer.Create(system);
             if (system is IListener listener)
             {
@@ -105,15 +114,15 @@ namespace Simulation
                 listener.CollectMessageHandlers(handlers);
                 foreach (MessageHandler handler in handlers)
                 {
-                    ref List<MessageReceiver> receivers = ref receiversMap.TryGetValue(handler.type, out bool contains);
-                    if (!contains)
+                    if (!receiversMap.TryGetValue(handler.type, out List<Receive>? receivers))
                     {
-                        receivers = ref receiversMap.Add(handler.type);
                         receivers = new(4);
+                        receiversMap.Add(handler.type, receivers);
                     }
 
                     container.receiverLocators.Add(new(handler.type, receivers.Count));
-                    receivers.Add(handler.receiver);
+                    receivers.Add((Receive)handler.receiver.Target!);
+                    handler.receiver.Free();
                 }
             }
 
@@ -125,14 +134,14 @@ namespace Simulation
         /// and disposes it by default.
         /// </summary>
         /// <returns>The removed system.</returns>
-        public readonly T Remove<T>(bool dispose = true) where T : ISystem
+        public T Remove<T>(bool dispose = true) where T : ISystem
         {
+            ThrowIfDisposed();
             ThrowIfSystemIsMissing<T>();
 
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                SystemContainer container = systemsSpan[i];
+                SystemContainer container = systems[i];
                 if (container.System is T system)
                 {
                     Remove(container, i);
@@ -154,14 +163,14 @@ namespace Simulation
         /// Throws an exception if the system is not found.
         /// </para>
         /// </summary>
-        public readonly void Remove(object system)
+        public void Remove(object system)
         {
+            ThrowIfDisposed();
             ThrowIfSystemIsMissing(system);
 
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                SystemContainer container = systemsSpan[i];
+                SystemContainer container = systems[i];
                 if (container.System == system)
                 {
                     Remove(container, i);
@@ -172,22 +181,23 @@ namespace Simulation
             throw new InvalidOperationException($"System instance {system} not found");
         }
 
-        private readonly void Remove(SystemContainer container, int index)
+        private void Remove(SystemContainer container, int index)
         {
+            ThrowIfDisposed();
+
             ReadOnlySpan<MessageReceiverLocator> receiverLocators = container.receiverLocators.AsSpan();
             for (int i = 0; i < receiverLocators.Length; i++)
             {
                 MessageReceiverLocator locator = receiverLocators[i];
-                ref List<MessageReceiver> receivers = ref receiversMap[locator.type];
+                List<Receive> receivers = receiversMap[locator.type];
                 receivers.RemoveAt(locator.index);
 
                 if (receivers.Count != locator.index)
                 {
                     //the removed listener wasnt last, so need to shift the rest of the list
-                    Span<SystemContainer> systemsSpan = systems.AsSpan();
-                    for (int c = 0; c < systemsSpan.Length; c++)
+                    for (int c = 0; c < systems.Count; c++)
                     {
-                        SystemContainer system = systemsSpan[c];
+                        SystemContainer system = systems[c];
                         Span<MessageReceiverLocator> locators = system.receiverLocators.AsSpan();
                         for (int j = 0; j < locators.Length; j++)
                         {
@@ -208,12 +218,13 @@ namespace Simulation
         /// <summary>
         /// Checks if the simulator contains a system of type <typeparamref name="T"/>.
         /// </summary>
-        public readonly bool Contains<T>() where T : ISystem
+        public bool Contains<T>() where T : ISystem
         {
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            ThrowIfDisposed();
+
+            for (int i = 0; i < systems.Count; i++)
             {
-                if (systemsSpan[i].System is T)
+                if (systems[i].System is T)
                 {
                     return true;
                 }
@@ -228,14 +239,14 @@ namespace Simulation
         /// An exception will be thrown if a system is not found.
         /// </para>
         /// </summary>
-        public readonly T GetFirst<T>() where T : ISystem
+        public T GetFirst<T>() where T : ISystem
         {
+            ThrowIfDisposed();
             ThrowIfSystemIsMissing<T>();
 
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                if (systemsSpan[i].System is T system)
+                if (systems[i].System is T system)
                 {
                     return system;
                 }
@@ -247,12 +258,13 @@ namespace Simulation
         /// <summary>
         /// Tries to retrieve the first system of type <typeparamref name="T"/>.
         /// </summary>
-        public readonly bool TryGetFirst<T>([NotNullWhen(true)] out T? system) where T : notnull, ISystem
+        public bool TryGetFirst<T>([NotNullWhen(true)] out T? system) where T : notnull, ISystem
         {
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            ThrowIfDisposed();
+
+            for (int i = 0; i < systems.Count; i++)
             {
-                if (systemsSpan[i].System is T foundSystem)
+                if (systems[i].System is T foundSystem)
                 {
                     system = foundSystem;
                     return true;
@@ -266,8 +278,9 @@ namespace Simulation
         /// <summary>
         /// Retrieves the system at the given <paramref name="index"/>.
         /// </summary>
-        public readonly ISystem GetSystem(int index)
+        public ISystem GetSystem(int index)
         {
+            ThrowIfDisposed();
             ThrowIfIndexIsOutOfBounds(index);
 
             return systems[index].System;
@@ -278,15 +291,16 @@ namespace Simulation
         /// </summary>
         public void Update()
         {
+            ThrowIfDisposed();
+
             DateTime timeNow = DateTime.UtcNow;
             double deltaTime = (timeNow - lastUpdateTime).TotalSeconds;
             lastUpdateTime = timeNow;
             runTime += deltaTime;
 
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                systemsSpan[i].Update(this, deltaTime);
+                systems[i].Update(this, deltaTime);
             }
         }
 
@@ -295,15 +309,16 @@ namespace Simulation
         /// </summary>
         public void Update(out double deltaTime)
         {
+            ThrowIfDisposed();
+
             DateTime timeNow = DateTime.UtcNow;
             deltaTime = (timeNow - lastUpdateTime).TotalSeconds;
             lastUpdateTime = timeNow;
             runTime += deltaTime;
 
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                systemsSpan[i].Update(this, deltaTime);
+                systems[i].Update(this, deltaTime);
             }
         }
 
@@ -312,59 +327,64 @@ namespace Simulation
         /// </summary>
         public void Update(double deltaTime)
         {
+            ThrowIfDisposed();
+
             lastUpdateTime = DateTime.UtcNow;
             runTime += deltaTime;
 
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                systemsSpan[i].Update(this, deltaTime);
+                systems[i].Update(this, deltaTime);
             }
         }
 
         /// <summary>
         /// Broadcasts the given <paramref name="message"/> to all systems.
         /// </summary>
-        public readonly void Broadcast<T>(T message) where T : unmanaged
+        public void Broadcast<T>(T message) where T : unmanaged
         {
+            ThrowIfDisposed();
+
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
-            if (receiversMap.TryGetValue(messageType, out List<MessageReceiver> receivers))
+            if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
-                using Message container = Message.Create(message);
-                Span<MessageReceiver> receiversSpan = receivers.AsSpan();
-                for (int i = 0; i < receiversSpan.Length; i++)
+                Message container = Message.Create(message);
+                for (int i = 0; i < receivers.Count; i++)
                 {
-                    receiversSpan[i].Invoke(container);
+                    receivers[i].Invoke(ref container);
                 }
+
+                container.Dispose();
             }
         }
 
         /// <summary>
         /// Broadcasts the given <paramref name="message"/> to all systems.
         /// </summary>
-        public readonly void Broadcast<T>(ref T message) where T : unmanaged
+        public void Broadcast<T>(ref T message) where T : unmanaged
         {
+            ThrowIfDisposed();
+
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
-            if (receiversMap.TryGetValue(messageType, out List<MessageReceiver> receivers))
+            if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
-                using Message container = Message.Create(message);
-                Span<MessageReceiver> receiversSpan = receivers.AsSpan();
-                for (int i = 0; i < receiversSpan.Length; i++)
+                Message container = Message.Create(message);
+                for (int i = 0; i < receivers.Count; i++)
                 {
-                    receiversSpan[i].Invoke(container);
+                    receivers[i].Invoke(ref container);
                 }
 
                 message = container.data.Read<T>();
+                container.Dispose();
             }
         }
 
         [Conditional("DEBUG")]
-        private readonly void ThrowIfSystemIsMissing<T>() where T : ISystem
+        private void ThrowIfSystemIsMissing<T>() where T : ISystem
         {
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                if (systemsSpan[i].System is T)
+                if (systems[i].System is T)
                 {
                     return;
                 }
@@ -374,12 +394,11 @@ namespace Simulation
         }
 
         [Conditional("DEBUG")]
-        private readonly void ThrowIfSystemIsMissing(object system)
+        private void ThrowIfSystemIsMissing(object system)
         {
-            ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
-            for (int i = 0; i < systemsSpan.Length; i++)
+            for (int i = 0; i < systems.Count; i++)
             {
-                if (systemsSpan[i].System == system)
+                if (systems[i].System == system)
                 {
                     return;
                 }
@@ -389,11 +408,20 @@ namespace Simulation
         }
 
         [Conditional("DEBUG")]
-        private readonly void ThrowIfIndexIsOutOfBounds(int index)
+        private void ThrowIfIndexIsOutOfBounds(int index)
         {
             if (index < 0 || index >= systems.Count)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), $"Index {index} is out of bounds. Count: {systems.Count}");
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ThrowIfDisposed()
+        {
+            if (disposed)
+            {
+                throw new ObjectDisposedException(nameof(Simulator), "Simulator has been disposed");
             }
         }
     }

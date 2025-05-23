@@ -1,21 +1,27 @@
-﻿using Types;
+﻿using System.Runtime.InteropServices;
+using Types;
 
 namespace Simulation
 {
     public readonly struct MessageHandler
     {
         public readonly TypeMetadata type;
-        public readonly MessageReceiver receiver;
+        internal readonly GCHandle receiver;
 
-        public MessageHandler(TypeMetadata type, MessageReceiver receiver)
+        public MessageHandler(TypeMetadata type, Receive receiver)
         {
             this.type = type;
-            this.receiver = receiver;
+            this.receiver = GCHandle.Alloc(receiver, GCHandleType.Normal);
         }
 
         public static MessageHandler Get<L, M>(L listener) where L : IListener<M> where M : unmanaged
         {
-            return new(TypeMetadata.GetOrRegister<M>(), MessageReceiver.Get<L, M>(listener));
+            return new(TypeMetadata.GetOrRegister<M>(), Receive);
+
+            void Receive(ref Message message)
+            {
+                listener.Receive(ref message.data.Read<M>());
+            }
         }
     }
 }
