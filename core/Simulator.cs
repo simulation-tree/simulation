@@ -8,9 +8,15 @@ using Worlds;
 
 namespace Simulation
 {
+    /// <summary>
+    /// Contains systems for updating and broadcasting messages to.
+    /// </summary>
     [SkipLocalsInit]
     public struct Simulator : IDisposable
     {
+        /// <summary>
+        /// The world this simulator is created for.
+        /// </summary>
         public readonly World world;
 
         private Dictionary<TypeMetadata, List<MessageReceiver>> receiversMap;
@@ -18,6 +24,9 @@ namespace Simulation
         private DateTime lastUpdateTime;
         private double runTime;
 
+        /// <summary>
+        /// Checks if the simulator has been disposed.
+        /// </summary>
         public readonly bool IsDisposed => systems.IsDisposed;
 
         /// <summary>
@@ -63,6 +72,9 @@ namespace Simulation
             lastUpdateTime = DateTime.UtcNow;
         }
 
+        /// <summary>
+        /// Disposes the simulator.
+        /// </summary>
         public void Dispose()
         {
             Span<SystemContainer> systemsSpan = systems.AsSpan();
@@ -80,6 +92,9 @@ namespace Simulation
             receiversMap.Dispose();
         }
 
+        /// <summary>
+        /// Adds the given <paramref name="system"/>.
+        /// </summary>
         public readonly void Add<T>(T system) where T : ISystem
         {
             SystemContainer container = SystemContainer.Create(system);
@@ -105,6 +120,11 @@ namespace Simulation
             systems.Add(container);
         }
 
+        /// <summary>
+        /// Removes the first system found of type <typeparamref name="T"/>,
+        /// and disposes it by default.
+        /// </summary>
+        /// <returns>The removed system.</returns>
         public readonly T Remove<T>(bool dispose = true) where T : ISystem
         {
             ThrowIfSystemIsMissing<T>();
@@ -128,6 +148,12 @@ namespace Simulation
             throw new InvalidOperationException($"System of type {typeof(T)} not found");
         }
 
+        /// <summary>
+        /// Removes the given <paramref name="system"/> without disposing it.
+        /// <para>
+        /// Throws an exception if the system is not found.
+        /// </para>
+        /// </summary>
         public readonly void Remove(object system)
         {
             ThrowIfSystemIsMissing(system);
@@ -179,6 +205,9 @@ namespace Simulation
             container.Dispose();
         }
 
+        /// <summary>
+        /// Checks if the simulator contains a system of type <typeparamref name="T"/>.
+        /// </summary>
         public readonly bool Contains<T>() where T : ISystem
         {
             ReadOnlySpan<SystemContainer> systemsSpan = systems.AsSpan();
@@ -234,6 +263,9 @@ namespace Simulation
             return false;
         }
 
+        /// <summary>
+        /// Retrieves the system at the given <paramref name="index"/>.
+        /// </summary>
         public readonly ISystem GetSystem(int index)
         {
             ThrowIfIndexIsOutOfBounds(index);
@@ -241,6 +273,9 @@ namespace Simulation
             return systems[index].System;
         }
 
+        /// <summary>
+        /// Updates all systems forward.
+        /// </summary>
         public void Update()
         {
             DateTime timeNow = DateTime.UtcNow;
@@ -255,6 +290,9 @@ namespace Simulation
             }
         }
 
+        /// <summary>
+        /// Updates all systems forward and retreives the delta time.
+        /// </summary>
         public void Update(out double deltaTime)
         {
             DateTime timeNow = DateTime.UtcNow;
@@ -269,6 +307,9 @@ namespace Simulation
             }
         }
 
+        /// <summary>
+        /// Updates all systems forward with the specified <paramref name="deltaTime"/>.
+        /// </summary>
         public void Update(double deltaTime)
         {
             lastUpdateTime = DateTime.UtcNow;
@@ -281,6 +322,9 @@ namespace Simulation
             }
         }
 
+        /// <summary>
+        /// Broadcasts the given <paramref name="message"/> to all systems.
+        /// </summary>
         public readonly void Broadcast<T>(T message) where T : unmanaged
         {
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
@@ -295,6 +339,9 @@ namespace Simulation
             }
         }
 
+        /// <summary>
+        /// Broadcasts the given <paramref name="message"/> to all systems.
+        /// </summary>
         public readonly void Broadcast<T>(ref T message) where T : unmanaged
         {
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
