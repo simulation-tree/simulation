@@ -3,18 +3,18 @@ using Unmanaged;
 
 namespace Simulation.Tests
 {
-    public partial class TextSystem : IDisposable, ISystem, IListener<AppendCharacter>, IListener<UpdateMessage>
+    public partial class TextSystem : SystemBase, IListener<AppendCharacter>, IListener<UpdateMessage>
     {
         private readonly Text text;
 
         public ReadOnlySpan<char> Text => text.AsSpan();
 
-        public TextSystem()
+        public TextSystem(Simulator simulator) : base(simulator)
         {
             text = new();
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             text.Dispose();
         }
@@ -27,10 +27,6 @@ namespace Simulation.Tests
         void IListener<UpdateMessage>.Receive(ref UpdateMessage message)
         {
             text.Append(message.deltaTime);
-        }
-
-        void ISystem.Update(Simulator simulator, double deltaTime)
-        {
         }
     }
 }

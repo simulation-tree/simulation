@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Simulation.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Types;
 using Unmanaged;
-using Worlds;
 
 namespace Simulation
 {
@@ -13,17 +13,14 @@ namespace Simulation
     /// Contains systems for updating and broadcasting messages to.
     /// </summary>
     [SkipLocalsInit]
-    public class Simulator
+    public class Simulator : IDisposable
     {
-        /// <summary>
-        /// The world this simulator is created for.
-        /// </summary>
-        public readonly World world;
-
         private readonly Dictionary<TypeMetadata, List<Receive>> receiversMap;
         private readonly List<object> systems;
-        private readonly List<ISystem> updatingSystems;
+        private readonly List<Type> systemTypes;
         private readonly List<MessageReceiverLocator[]> receiverLocators;
+        private MemoryAddress messageContainer;
+        private int messageCapacity;
 
         /// <summary>
         /// Amount of systems added.
@@ -38,27 +35,39 @@ namespace Simulation
         /// <summary>
         /// Creates a new simulator.
         /// </summary>
-        public Simulator(World world)
+        public Simulator()
         {
-            this.world = world;
             receiversMap = new(4);
             systems = new(4);
-            updatingSystems = new(4);
+            systemTypes = new(4);
             receiverLocators = new(4);
+            messageCapacity = 64;
+            messageContainer = MemoryAddress.Allocate(messageCapacity);
+        }
+
+        /// <summary>
+        /// Disposes the simulator.
+        /// </summary>
+        public virtual void Dispose()
+        {
+            messageContainer.Dispose();
         }
 
         /// <summary>
         /// Adds the given <paramref name="system"/>.
         /// </summary>
-        public void Add<T>(T system) where T : class
+        public void Add<T>(T system) where T : notnull
         {
             AddListeners(system);
-            if (system is ISystem updatingSystem)
+            systems.Add(system);
+
+            Type systemType = typeof(T);
+            if (!systemTypes.Contains(systemType))
             {
-                updatingSystems.Add(updatingSystem);
+                systemTypes.Add(typeof(T));
             }
 
-            systems.Add(system);
+            OnAdded(system);
         }
 
         /// <summary>
@@ -66,32 +75,19 @@ namespace Simulation
         /// and disposes it by default.
         /// </summary>
         /// <returns>The removed system.</returns>
-        public T Remove<T>(bool dispose = true) where T : class
+        public T Remove<T>(bool dispose = true) where T : notnull
         {
-            ThrowIfSystemIsMissing<T>();
-
             int count = systems.Count;
             for (int i = 0; i < count; i++)
             {
                 if (systems[i] is T system)
                 {
-                    systems.RemoveAt(i);
-                    if (system is ISystem updatingSystem)
-                    {
-                        updatingSystems.Remove(updatingSystem);
-                    }
-
-                    RemoveListeners(i);
-                    if (dispose && system is IDisposable disposableSystem)
-                    {
-                        disposableSystem.Dispose();
-                    }
-
+                    Remove(i, dispose);
                     return system;
                 }
             }
 
-            throw new InvalidOperationException($"System of type {typeof(T)} not found");
+            throw new MissingSystemTypeException(typeof(T));
         }
 
         /// <summary>
@@ -109,21 +105,56 @@ namespace Simulation
             {
                 if (systems[i] == system)
                 {
-                    systems.RemoveAt(i);
-                    if (system is ISystem updatingSystem)
-                    {
-                        updatingSystems.Remove(updatingSystem);
-                    }
-
-                    RemoveListeners(i);
+                    Remove(i, false);
                     return;
                 }
             }
 
-            throw new InvalidOperationException($"System instance {system} not found");
+            throw new NullReferenceException($"System instance `{system}` not found");
         }
 
-        private void AddListeners<T>(T system) where T : class
+        private void Remove(int index, bool dispose)
+        {
+            object system = systems[index];
+            systems.RemoveAt(index);
+            RemoveListeners(index);
+            Type type = system.GetType();
+            int count = 0;
+            for (int i = 0; i < systems.Count; i++)
+            {
+                if (systems[i].GetType() == type)
+                {
+                    count++;
+                }
+            }
+
+            if (count == 0)
+            {
+                systemTypes.Remove(type);
+            }
+
+            OnRemoved(system);
+            if (dispose && system is IDisposable disposableSystem)
+            {
+                disposableSystem.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Callback after a system has been added.
+        /// </summary>
+        protected virtual void OnAdded(object system)
+        {
+        }
+
+        /// <summary>
+        /// Callback after a system has been removed.
+        /// </summary>
+        protected virtual void OnRemoved(object system)
+        {
+        }
+
+        private void AddListeners<T>(T system) where T : notnull
         {
             if (system is IListener listener)
             {
@@ -155,7 +186,7 @@ namespace Simulation
 
         private void RemoveListeners(int index)
         {
-            MessageReceiverLocator[] locators = receiverLocators[index];
+            ReadOnlySpan<MessageReceiverLocator> locators = receiverLocators[index].AsSpan();
             for (int i = 0; i < locators.Length; i++)
             {
                 MessageReceiverLocator locator = locators[i];
@@ -167,7 +198,7 @@ namespace Simulation
                     //the removed listener wasnt last, so need to shift the rest of the list
                     for (int c = 0; c < systems.Count; c++)
                     {
-                        MessageReceiverLocator[] otherLocators = receiverLocators[c];
+                        Span<MessageReceiverLocator> otherLocators = receiverLocators[c].AsSpan();
                         for (int j = 0; j < otherLocators.Length; j++)
                         {
                             MessageReceiverLocator otherLocator = otherLocators[j];
@@ -185,18 +216,9 @@ namespace Simulation
         /// <summary>
         /// Checks if the simulator contains a system of type <typeparamref name="T"/>.
         /// </summary>
-        public bool Contains<T>() where T : class
+        public bool Contains<T>() where T : notnull
         {
-            int count = systems.Count;
-            for (int i = 0; i < count; i++)
-            {
-                if (systems[i] is T)
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return systemTypes.Contains(typeof(T));
         }
 
         /// <summary>
@@ -205,10 +227,8 @@ namespace Simulation
         /// An exception will be thrown if a system is not found.
         /// </para>
         /// </summary>
-        public T GetFirst<T>() where T : class
+        public T GetFirst<T>() where T : notnull
         {
-            ThrowIfSystemIsMissing<T>();
-
             int count = systems.Count;
             for (int i = 0; i < count; i++)
             {
@@ -218,13 +238,13 @@ namespace Simulation
                 }
             }
 
-            throw new InvalidOperationException($"System of type {typeof(T)} not found");
+            throw new MissingSystemTypeException(typeof(T));
         }
 
         /// <summary>
         /// Tries to retrieve the first system of type <typeparamref name="T"/>.
         /// </summary>
-        public bool TryGetFirst<T>([NotNullWhen(true)] out T? system) where T : class
+        public bool TryGetFirst<T>([NotNullWhen(true)] out T? system) where T : notnull
         {
             int count = systems.Count;
             for (int i = 0; i < count; i++)
@@ -241,42 +261,25 @@ namespace Simulation
         }
 
         /// <summary>
-        /// Updates all systems forward.
-        /// </summary>
-        public void Update()
-        {
-            int count = updatingSystems.Count;
-            for (int i = 0; i < count; i++)
-            {
-                updatingSystems[i].Update(this, 0);
-            }
-        }
-
-        /// <summary>
-        /// Updates all systems forward with the specified <paramref name="deltaTime"/>.
-        /// </summary>
-        public void Update(double deltaTime)
-        {
-            int count = updatingSystems.Count;
-            for (int i = 0; i < count; i++)
-            {
-                updatingSystems[i].Update(this, deltaTime);
-            }
-        }
-
-        /// <summary>
         /// Broadcasts the given <paramref name="message"/> to all systems.
         /// </summary>
-        public void Broadcast<T>(T message) where T : unmanaged
+        public unsafe void Broadcast<T>(T message) where T : unmanaged
         {
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
-                using MemoryAddress container = MemoryAddress.AllocateValue(message);
+                int messageLength = sizeof(T);
+                if (messageLength > messageCapacity)
+                {
+                    messageCapacity = messageLength.GetNextPowerOf2();
+                    MemoryAddress.Resize(ref messageContainer, messageCapacity);
+                }
+
+                messageContainer.Write(message);
                 int count = receivers.Count;
                 for (int i = 0; i < count; i++)
                 {
-                    receivers[i].Invoke(container);
+                    receivers[i].Invoke(messageContainer);
                 }
             }
         }
@@ -284,34 +287,27 @@ namespace Simulation
         /// <summary>
         /// Broadcasts the given <paramref name="message"/> to all systems.
         /// </summary>
-        public void Broadcast<T>(ref T message) where T : unmanaged
+        public unsafe void Broadcast<T>(ref T message) where T : unmanaged
         {
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
-                using MemoryAddress container = MemoryAddress.AllocateValue(message);
+                int messageLength = sizeof(T);
+                if (messageLength > messageCapacity)
+                {
+                    messageCapacity = messageLength.GetNextPowerOf2();
+                    MemoryAddress.Resize(ref messageContainer, messageCapacity);
+                }
+
+                messageContainer.Write(message);
                 int count = receivers.Count;
                 for (int i = 0; i < count; i++)
                 {
-                    receivers[i].Invoke(container);
+                    receivers[i].Invoke(messageContainer);
                 }
 
-                message = container.Read<T>();
+                message = messageContainer.Read<T>();
             }
-        }
-
-        [Conditional("DEBUG")]
-        private void ThrowIfSystemIsMissing<T>() where T : class
-        {
-            for (int i = 0; i < systems.Count; i++)
-            {
-                if (systems[i] is T)
-                {
-                    return;
-                }
-            }
-
-            throw new InvalidOperationException($"System of type {typeof(T)} not found");
         }
 
         [Conditional("DEBUG")]
@@ -325,7 +321,7 @@ namespace Simulation
                 }
             }
 
-            throw new InvalidOperationException($"System instance {system} not found");
+            throw new NullReferenceException($"System instance `{system}` not found in the simulator");
         }
 
         [Conditional("DEBUG")]

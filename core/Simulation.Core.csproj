@@ -30,7 +30,6 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\collections\source\Collections.csproj" />
 		<ProjectReference Include="..\..\types\core\Types.Core.csproj" />
-		<ProjectReference Include="..\..\worlds\core\Worlds.Core.csproj" />
 	</ItemGroup>
 
 </Project>

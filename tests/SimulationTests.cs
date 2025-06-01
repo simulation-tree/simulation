@@ -1,33 +1,33 @@
 ﻿using Unmanaged.Tests;
-using Worlds;
 
 namespace Simulation.Tests
 {
     public abstract class SimulationTests : UnmanagedTests
     {
         private Simulator? simulator;
-        public World world;
 
         public Simulator Simulator => simulator ?? throw new("Simulator is not initialized");
 
         protected override void SetUp()
         {
             base.SetUp();
-            world = new(CreateSchema());
-            simulator = new(world);
+            simulator = new();
         }
 
         protected override void TearDown()
         {
-            simulator = default;
-            world.Dispose();
-            world = default;
+            simulator?.Dispose();
+            simulator = null;
             base.TearDown();
         }
 
-        protected virtual Schema CreateSchema()
+        protected void Update()
         {
-            return new();
+            Update(0);
+        }
+
+        protected virtual void Update(double deltaTime)
+        {
         }
     }
 }
