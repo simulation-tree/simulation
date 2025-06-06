@@ -50,8 +50,7 @@ namespace Simulation.Generators
                                 {
                                     if (context.SemanticModel.GetDeclaredSymbol(methodDeclaration, token) is IMethodSymbol methodSymbol)
                                     {
-                                        string declaringTypeName = methodSymbol.ContainingType.ToDisplayString();
-                                        return new ListenerMethod(declaringTypeName, methodDeclaration, messageTypeSymbol);
+                                        return new ListenerMethod(methodSymbol, methodDeclaration, messageTypeSymbol);
                                     }
                                 }
                             }
@@ -78,16 +77,12 @@ namespace Simulation.Generators
 
                 if (methods.Count > 0)
                 {
-                    context.AddSource($"{GlobalSimulatorLoaderTypeName}.generated.cs", Generate(input.compilation, methods));
-                }
-                else
-                {
-                    context.AddSource($"{GlobalSimulatorLoaderTypeName}.generated.cs", $"//{methods.Count}");
+                    context.AddSource($"{GlobalSimulatorLoaderTypeName}.generated.cs", Generate(context, input.compilation, methods));
                 }
             }
         }
 
-        public static string Generate(Compilation compilation, IEnumerable<ListenerMethod> methods)
+        public static string Generate(SourceProductionContext context, Compilation compilation, IEnumerable<ListenerMethod> methods)
         {
             string? assemblyName = compilation.AssemblyName;
             source.Clear();
@@ -118,11 +113,88 @@ namespace Simulation.Generators
 
                     foreach (ListenerMethod method in methods)
                     {
+                        //emit error if not static or public
+                        bool isStatic = method.methodSymbol.IsStatic;
+                        bool isPublic = method.methodSymbol.DeclaredAccessibility.HasFlag(Accessibility.Public);
+                        if (!isStatic || !isPublic)
+                        {
+                            const string ID = "S0001";
+                            const string Category = "Listeners";
+                            const DiagnosticSeverity Severity = DiagnosticSeverity.Error;
+                            string methodName = $"{method.methodSymbol.ContainingType.ToDisplayString()}.{method.methodDeclaration.Identifier.Text}";
+                            string message;
+                            if (!isPublic && !isStatic)
+                            {
+                                message = $"The method `{methodName}` is not public nor static, and cannot be registered as a listener";
+                            }
+                            else if (!isStatic)
+                            {
+                                message = $"The method `{methodName}` is not static, and cannot be registered as a listener";
+                            }
+                            else
+                            {
+                                message = $"The method `{methodName}` is not public, and cannot be registered as a listener";
+                            }
+
+                            Diagnostic diagnostic = Diagnostic.Create(ID, Category, message, Severity, Severity, true, 0, false, location: method.methodDeclaration.GetLocation());
+                            context.ReportDiagnostic(diagnostic);
+                            continue;
+                        }
+
+                        //emit error if parameter is missing
+                        if (method.methodSymbol.Parameters.Length == 0)
+                        {
+                            const string ID = "S0002";
+                            const string Category = "Listeners";
+                            const DiagnosticSeverity Severity = DiagnosticSeverity.Error;
+                            string message = $"Listener method is missing a ref {method.messageTypeSymbol.Name} parameter";
+                            Diagnostic diagnostic = Diagnostic.Create(ID, Category, message, Severity, Severity, true, 0, false, location: method.methodDeclaration.GetLocation());
+                            context.ReportDiagnostic(diagnostic);
+                            continue;
+                        }
+                        else if (method.methodSymbol.Parameters.Length == 1)
+                        {
+                            IParameterSymbol parameter = method.methodSymbol.Parameters[0];
+                            if (parameter.Type.ToDisplayString() != method.messageTypeSymbol.ToDisplayString())
+                            {
+                                const string ID = "S0003";
+                                const string Category = "Listeners";
+                                const DiagnosticSeverity Severity = DiagnosticSeverity.Error;
+                                string message = $"Listener method is expected to accept the {method.messageTypeSymbol.Name} parameter as a ref, but got {parameter.Type.Name} instead";
+                                Diagnostic diagnostic = Diagnostic.Create(ID, Category, message, Severity, Severity, true, 0, false, location: method.methodDeclaration.GetLocation());
+                                context.ReportDiagnostic(diagnostic);
+                                continue;
+                            }
+                            else
+                            {
+                                if (parameter.RefKind != RefKind.Ref)
+                                {
+                                    const string ID = "S0004";
+                                    const string Category = "Listeners";
+                                    const DiagnosticSeverity Severity = DiagnosticSeverity.Error;
+                                    string message = $"Listener method is expected to accept the {parameter.Type.Name} parameter as a ref";
+                                    Diagnostic diagnostic = Diagnostic.Create(ID, Category, message, Severity, Severity, true, 0, false, location: method.methodDeclaration.GetLocation());
+                                    context.ReportDiagnostic(diagnostic);
+                                    continue;
+                                }
+                            }
+                        }
+                        else if (method.methodSymbol.Parameters.Length > 1)
+                        {
+                            const string ID = "S0005";
+                            const string Category = "Listeners";
+                            const DiagnosticSeverity Severity = DiagnosticSeverity.Error;
+                            string message = $"Listener method has an invalid signature, it should only have a ref {method.messageTypeSymbol.Name} parameter";
+                            Diagnostic diagnostic = Diagnostic.Create(ID, Category, message, Severity, Severity, true, 0, false, location: method.methodDeclaration.GetLocation());
+                            context.ReportDiagnostic(diagnostic);
+                            continue;
+                        }
+
                         source.Append(GlobalSimulatorTypeName);
                         source.Append(".Register<");
                         source.Append(method.messageTypeSymbol.ToDisplayString());
                         source.Append(">(");
-                        source.Append(method.declaringTypeName);
+                        source.Append(method.methodSymbol.ContainingType.ToDisplayString());
                         source.Append(".");
                         source.Append(method.methodDeclaration.Identifier.Text);
                         source.Append(");");
