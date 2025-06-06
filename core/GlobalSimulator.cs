@@ -1,6 +1,5 @@
-﻿using System.Collections;
+﻿using System;
 using System.Collections.Generic;
-using Types;
 
 namespace Simulation
 {
@@ -9,16 +8,15 @@ namespace Simulation
     /// </summary>
     public static class GlobalSimulator
     {
-        private static readonly Dictionary<TypeMetadata, IList> listeners = new();
+        private static readonly List<Action> clearFunctions = new();
 
         /// <summary>
         /// Registers a listener for messages of type <typeparamref name="T"/>.
         /// </summary>
         public static void Register<T>(Receive<T> receive) where T : unmanaged
         {
-            TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
-            Listeners<T>.list.Add(receive);
-            listeners[messageType] = Listeners<T>.list;
+            Array.Resize(ref Listeners<T>.list, Listeners<T>.list.Length + 1);
+            Listeners<T>.list[^1] = receive;
         }
 
         /// <summary>
@@ -26,10 +24,9 @@ namespace Simulation
         /// </summary>
         public static void Register<T>(IListener<T> listener) where T : unmanaged
         {
-            TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             Receive<T> receive = listener.Receive;
-            Listeners<T>.list.Add(receive);
-            listeners[messageType] = Listeners<T>.list;
+            Array.Resize(ref Listeners<T>.list, Listeners<T>.list.Length + 1);
+            Listeners<T>.list[^1] = receive;
         }
 
         /// <summary>
@@ -37,12 +34,10 @@ namespace Simulation
         /// </summary>
         public static void Reset()
         {
-            foreach (IList list in listeners.Values)
+            foreach (Action clearFunction in clearFunctions)
             {
-                list.Clear();
+                clearFunction();
             }
-
-            listeners.Clear();
         }
 
         /// <summary>
@@ -50,7 +45,7 @@ namespace Simulation
         /// </summary>
         public static void Broadcast<T>(T message) where T : unmanaged
         {
-            int length = Listeners<T>.list.Count;
+            int length = Listeners<T>.list.Length;
             for (int i = 0; i < length; i++)
             {
                 Listeners<T>.list[i](ref message);
@@ -62,7 +57,7 @@ namespace Simulation
         /// </summary>
         public static void Broadcast<T>(ref T message) where T : unmanaged
         {
-            int length = Listeners<T>.list.Count;
+            int length = Listeners<T>.list.Length;
             for (int i = 0; i < length; i++)
             {
                 Listeners<T>.list[i](ref message);
@@ -71,7 +66,17 @@ namespace Simulation
 
         private static class Listeners<T> where T : unmanaged
         {
-            public static readonly List<Receive<T>> list = new();
+            public static Receive<T>[] list = [];
+
+            static Listeners()
+            {
+                clearFunctions.Add(Reset);
+            }
+
+            public static void Reset()
+            {
+                Array.Resize(ref list, 0);
+            }
         }
 
         /// <summary>
