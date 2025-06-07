@@ -1,35 +1,44 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>net9.0</TargetFramework>
-		<ImplicitUsings>disable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-		<IsAotCompatible>True</IsAotCompatible>
-		<IsTrimmable>True</IsTrimmable>
-		<TreatWarningsAsErrors>True</TreatWarningsAsErrors>
-		<Authors>popcron</Authors>
-		<Company>simulation-tree</Company>
-		<Description>Logic upon data</Description>
-		<RepositoryUrl>https://github.com/simulation-tree/simulation</RepositoryUrl>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageTags>ecs</PackageTags>
-		<Title>Simulation Core</Title>
-		<RootNamespace>Simulation</RootNamespace>
-		<PackageId />
-		<GenerateDocumentationFile>True</GenerateDocumentationFile>
-	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <IsAotCompatible>True</IsAotCompatible>
+    <IsTrimmable>True</IsTrimmable>
+    <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
+    <Authors>popcron</Authors>
+    <Company>simulation-tree</Company>
+    <Description>Logic upon data</Description>
+    <RepositoryUrl>https://github.com/simulation-tree/simulation</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>ecs</PackageTags>
+    <Title>Simulation Core</Title>
+    <RootNamespace>Simulation</RootNamespace>
+    <GenerateDocumentationFile>True</GenerateDocumentationFile>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<None Include="..\README.md">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-	</ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
-	<ItemGroup>
-		<ProjectReference Include="..\..\collections\source\Collections.csproj" />
-		<ProjectReference Include="..\..\types\core\Types.Core.csproj" />
-	</ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\collections\source\Collections.csproj"/>
+    <ProjectReference Include="..\..\types\core\Types.Core.csproj"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="bin/Debug/net9.0/Simulation.Core.dll" Pack="true" PackagePath="tools/debug/Simulation.Core.dll" Visible="false"/>
+    <Content Include="bin/Debug/net9.0/Simulation.Core.xml" Pack="true" PackagePath="tools/debug/Simulation.Core.xml" Visible="false"/>
+    <Content Include="bin/Release/net9.0/Simulation.Core.dll" Pack="true" PackagePath="tools/release/Simulation.Core.dll" Visible="false"/>
+    <Content Include="bin/Release/net9.0/Simulation.Core.xml" Pack="true" PackagePath="tools/release/Simulation.Core.xml" Visible="false"/>
+    <Content Include="build/Simulation.Core.targets" Pack="true" PackagePath="build/Simulation.Core.targets" Visible="false"/>
+  </ItemGroup>
 
 </Project>
