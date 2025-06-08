@@ -18,7 +18,7 @@
     <RootNamespace>Simulation</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <IncludeBuildOutput>false</IncludeBuildOutput>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <OutDir>bin/$(TargetFramework)/$(Configuration)</OutDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -34,11 +34,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="bin/Debug/net9.0/Simulation.Core.dll" Pack="true" PackagePath="tools/debug/Simulation.Core.dll" Visible="false"/>
-    <Content Include="bin/Debug/net9.0/Simulation.Core.xml" Pack="true" PackagePath="tools/debug/Simulation.Core.xml" Visible="false" Condition="Exists('bin/Debug/net9.0/Simulation.Core.xml')"/>
-    <Content Include="bin/Release/net9.0/Simulation.Core.dll" Pack="true" PackagePath="tools/release/Simulation.Core.dll" Visible="false"/>
-    <Content Include="bin/Release/net9.0/Simulation.Core.xml" Pack="true" PackagePath="tools/release/Simulation.Core.xml" Visible="false" Condition="Exists('bin/Release/net9.0/Simulation.Core.xml')"/>
-    <Content Include="build/Simulation.Core.targets" Pack="true" PackagePath="build/Simulation.Core.targets" Visible="false"/>
+    <Content Include="bin/**/*" Pack="true" PackagePath="lib" Visible="false"/>
+    <Content Include="buildTransitive/**/*" Pack="true" PackagePath="buildTransitive"/>
   </ItemGroup>
 
 </Project>
