@@ -15,13 +15,6 @@ jobs:
         with:
           path: ${{ github.event.repository.name }}
             
-      - name: Checkout `worlds`
-        uses: actions/checkout@v4.1.2
-        with:
-          repository: simulation-tree/worlds
-          token: ${{ secrets.PAT }}
-          path: worlds
-      
       - name: Checkout `types`
         uses: actions/checkout@v4.1.2
         with:
@@ -29,19 +22,26 @@ jobs:
           token: ${{ secrets.PAT }}
           path: types
       
-      - name: Checkout `unmanaged`
-        uses: actions/checkout@v4.1.2
-        with:
-          repository: simulation-tree/unmanaged
-          token: ${{ secrets.PAT }}
-          path: unmanaged
-      
       - name: Checkout `collections`
         uses: actions/checkout@v4.1.2
         with:
           repository: simulation-tree/collections
           token: ${{ secrets.PAT }}
           path: collections
+      
+      - name: Checkout `worlds`
+        uses: actions/checkout@v4.1.2
+        with:
+          repository: simulation-tree/worlds
+          token: ${{ secrets.PAT }}
+          path: worlds
+      
+      - name: Checkout `unmanaged`
+        uses: actions/checkout@v4.1.2
+        with:
+          repository: simulation-tree/unmanaged
+          token: ${{ secrets.PAT }}
+          path: unmanaged
             
       - name: Setup
         uses: actions/setup-dotnet@v4
@@ -52,13 +52,25 @@ jobs:
         run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
             
       - name: Build `Simulation.Core`
+        run: dotnet build "${{ github.event.repository.name }}/core" -c Debug /p:Version=${VERSION}
+      
+      - name: Build `Simulation.Core`
         run: dotnet build "${{ github.event.repository.name }}/core" -c Release /p:Version=${VERSION}
+      
+      - name: Build `Simulation.Generator`
+        run: dotnet build "${{ github.event.repository.name }}/generator" -c Debug /p:Version=${VERSION}
       
       - name: Build `Simulation.Generator`
         run: dotnet build "${{ github.event.repository.name }}/generator" -c Release /p:Version=${VERSION}
       
       - name: Build `Simulation`
+        run: dotnet build "${{ github.event.repository.name }}/source" -c Debug /p:Version=${VERSION}
+      
+      - name: Build `Simulation`
         run: dotnet build "${{ github.event.repository.name }}/source" -c Release /p:Version=${VERSION}
+      
+      - name: Build `Simulation.Tests`
+        run: dotnet build "${{ github.event.repository.name }}/tests" -c Debug /p:Version=${VERSION}
       
       - name: Build `Simulation.Tests`
         run: dotnet build "${{ github.event.repository.name }}/tests" -c Release /p:Version=${VERSION}
@@ -67,13 +79,13 @@ jobs:
         run: dotnet test "${{ github.event.repository.name }}/tests" -c Release --logger "trx"
             
       - name: Pack `Simulation.Core`
-        run: dotnet pack "${{ github.event.repository.name }}/core" -c Release /p:Version=${VERSION} --no-build --output .
+        run: dotnet pack "${{ github.event.repository.name }}/core" /p:Version=${VERSION} --no-build --output .
       
       - name: Pack `Simulation.Generator`
-        run: dotnet pack "${{ github.event.repository.name }}/generator" -c Release /p:Version=${VERSION} --no-build --output .
+        run: dotnet pack "${{ github.event.repository.name }}/generator" /p:Version=${VERSION} --no-build --output .
       
       - name: Pack `Simulation`
-        run: dotnet pack "${{ github.event.repository.name }}/source" -c Release /p:Version=${VERSION} --no-build --output .
+        run: dotnet pack "${{ github.event.repository.name }}/source" /p:Version=${VERSION} --no-build --output .
 
       - name: Add NuGet Source
         run: dotnet nuget add source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --name github --username ${{ github.repository_owner }} --password ${{ github.token }} --store-password-in-clear-text

@@ -28,13 +28,6 @@ jobs:
         with:
           path: ${{ github.event.repository.name }}
             
-      - name: Checkout `worlds`
-        uses: actions/checkout@v4.1.2
-        with:
-          repository: simulation-tree/worlds
-          token: ${{ secrets.PAT }}
-          path: worlds
-      
       - name: Checkout `types`
         uses: actions/checkout@v4.1.2
         with:
@@ -42,19 +35,26 @@ jobs:
           token: ${{ secrets.PAT }}
           path: types
       
-      - name: Checkout `unmanaged`
-        uses: actions/checkout@v4.1.2
-        with:
-          repository: simulation-tree/unmanaged
-          token: ${{ secrets.PAT }}
-          path: unmanaged
-      
       - name: Checkout `collections`
         uses: actions/checkout@v4.1.2
         with:
           repository: simulation-tree/collections
           token: ${{ secrets.PAT }}
           path: collections
+      
+      - name: Checkout `worlds`
+        uses: actions/checkout@v4.1.2
+        with:
+          repository: simulation-tree/worlds
+          token: ${{ secrets.PAT }}
+          path: worlds
+      
+      - name: Checkout `unmanaged`
+        uses: actions/checkout@v4.1.2
+        with:
+          repository: simulation-tree/unmanaged
+          token: ${{ secrets.PAT }}
+          path: unmanaged
             
       - name: Setup
         uses: actions/setup-dotnet@v4
