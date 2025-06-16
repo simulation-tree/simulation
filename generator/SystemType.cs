@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Simulation
 {
-    public class SystemType
+    internal class SystemType
     {
         public readonly TypeDeclarationSyntax typeDeclaration;
         public readonly ITypeSymbol typeSymbol;

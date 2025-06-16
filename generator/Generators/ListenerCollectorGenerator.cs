@@ -80,11 +80,14 @@ namespace Simulation.Generators
 
             if (input.containingNamespace is not null)
             {
-                source.AppendLine($"namespace {input.containingNamespace}");
+                source.Append("namespace ");
+                source.Append(input.containingNamespace);
+                source.AppendLine();
                 source.BeginGroup();
             }
 
-            source.Append($"public partial class {input.typeName}");
+            source.Append("public partial class ");
+            source.Append(input.typeName);
             source.Append(" : ");
             source.Append(ListenerInterfaceTypeName);
             source.AppendLine();

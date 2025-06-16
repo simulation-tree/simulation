@@ -19,6 +19,18 @@
         }
 
         [Test]
+        public void BroadcastingToGlobalSimulator()
+        {
+            GlobalSimulatorLoader.Load();
+            Assert.That(GlobalTimeSystem.time, Is.EqualTo(0));
+            GlobalSimulator.Broadcast(new UpdateMessage(1));
+            Assert.That(GlobalTimeSystem.time, Is.EqualTo(1));
+            GlobalSimulator.Reset();
+            GlobalSimulator.Broadcast(new UpdateMessage(1));
+            Assert.That(GlobalTimeSystem.time, Is.EqualTo(1));
+        }
+
+        [Test]
         public void SystemsOutOfOrder()
         {
             TimeSystem system = new();

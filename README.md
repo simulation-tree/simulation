@@ -2,7 +2,7 @@
 
 [![Test](https://github.com/simulation-tree/simulation/actions/workflows/test.yml/badge.svg)](https://github.com/simulation-tree/simulation/actions/workflows/test.yml)
 
-Library providing a way to organize and update systems with support for message handling.
+Library providing a way to broadcast messages to added listeners.
 
 ### Running simulators
 
@@ -18,21 +18,16 @@ public static void Main()
     simulator.Remove<ProgramSystems>();
 }
 
-public class ProgramSystems : ISystem, IDisposable
+public class ProgramSystems : IDisposable
 {
     public ProgramSystems()
     {
-        //initialize
+        //before addition
     }
 
     public void Dispose()
     {
-        //clean up
-    }
-
-    void ISystem.Update(Simulator simulator, double deltaTime)
-    {
-        //do work
+        //after removal
     }
 }
 ```
@@ -50,7 +45,6 @@ public partial class ListenerSystem : IListener<float>
 {
     void IListener<float>.Receive(ref float message)
     {
-        //do something with this
     }
 }
 ```
@@ -73,6 +67,32 @@ public partial class LoadSystem : IListener<LoadRequest>
 public struct LoadRequest
 {
     public bool loaded;
+}
+```
+
+### Global simulator
+
+Another way to have listeners and broadcasting setup, is using the included `GlobalSimulator` type.
+This approach is slimmer than with the `Simulator`, at the cost of the listeners being global to the entire
+runtime.
+```cs
+public class Program
+{
+    public static void Main()
+    {
+        GlobalSimulatorLoader.Load();
+        GlobalSimulator.Broadcast(32f);
+        GlobalSimulator.Broadcast(32f);
+        GlobalSimulator.Broadcast(32f);
+    }
+}
+
+public static class Systems
+{
+    [Listener<float>]
+    public static void Update(ref float message)
+    {
+    }
 }
 ```
 
