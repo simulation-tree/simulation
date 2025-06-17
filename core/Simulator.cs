@@ -19,8 +19,8 @@ namespace Simulation
         private readonly List<object> systems;
         private readonly List<Type> systemTypes;
         private readonly List<MessageReceiverLocator[]> receiverLocators;
-        private MemoryAddress messageContainer;
-        private int messageCapacity;
+        private readonly Collections.Generic.Stack<Message> messageContainers;
+        private bool disposed;
 
         /// <summary>
         /// Amount of systems added.
@@ -33,6 +33,11 @@ namespace Simulation
         public IReadOnlyList<object> Systems => systems;
 
         /// <summary>
+        /// Checks if this instance has been disposed.
+        /// </summary>
+        public bool IsDisposed => disposed;
+
+        /// <summary>
         /// Creates a new simulator.
         /// </summary>
         public Simulator()
@@ -41,16 +46,26 @@ namespace Simulation
             systems = new(4);
             systemTypes = new(4);
             receiverLocators = new(4);
-            messageCapacity = 64;
-            messageContainer = MemoryAddress.Allocate(messageCapacity);
+            messageContainers = new(4);
         }
 
         /// <summary>
         /// Disposes the simulator.
+        /// <para>
+        /// When overriding, call this function last.
+        /// </para>
         /// </summary>
         public virtual void Dispose()
         {
-            messageContainer.Dispose();
+            ThrowIfDisposed();
+
+            disposed = true;
+            while (messageContainers.TryPop(out Message message))
+            {
+                message.Dispose();
+            }
+
+            messageContainers.Dispose();
         }
 
         /// <summary>
@@ -58,6 +73,7 @@ namespace Simulation
         /// </summary>
         public void Add<T>(T system) where T : notnull
         {
+            ThrowIfDisposed();
             AddListeners(system);
             systems.Add(system);
 
@@ -77,6 +93,8 @@ namespace Simulation
         /// <returns>The removed system.</returns>
         public T Remove<T>(bool dispose = true) where T : notnull
         {
+            ThrowIfDisposed();
+
             int count = systems.Count;
             for (int i = 0; i < count; i++)
             {
@@ -98,6 +116,7 @@ namespace Simulation
         /// </summary>
         public void Remove(object system)
         {
+            ThrowIfDisposed();
             ThrowIfSystemIsMissing(system);
 
             int count = systems.Count;
@@ -218,6 +237,8 @@ namespace Simulation
         /// </summary>
         public bool Contains<T>() where T : notnull
         {
+            ThrowIfDisposed();
+
             return systemTypes.Contains(typeof(T));
         }
 
@@ -229,6 +250,8 @@ namespace Simulation
         /// </summary>
         public T GetFirst<T>() where T : notnull
         {
+            ThrowIfDisposed();
+
             int count = systems.Count;
             for (int i = 0; i < count; i++)
             {
@@ -246,6 +269,8 @@ namespace Simulation
         /// </summary>
         public bool TryGetFirst<T>([NotNullWhen(true)] out T? system) where T : notnull
         {
+            ThrowIfDisposed();
+
             int count = systems.Count;
             for (int i = 0; i < count; i++)
             {
@@ -265,22 +290,33 @@ namespace Simulation
         /// </summary>
         public unsafe void Broadcast<T>(T message) where T : unmanaged
         {
+            ThrowIfDisposed();
+
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
                 int messageLength = sizeof(T);
-                if (messageLength > messageCapacity)
+                if (messageContainers.TryPop(out Message messageContainer))
                 {
-                    messageCapacity = messageLength.GetNextPowerOf2();
-                    MemoryAddress.Resize(ref messageContainer, messageCapacity);
+                    if (messageLength > messageContainer.byteCapacity)
+                    {
+                        messageContainer.byteCapacity = messageLength.GetNextPowerOf2();
+                        MemoryAddress.Resize(ref messageContainer.memory, messageContainer.byteCapacity);
+                    }
+                }
+                else
+                {
+                    messageContainer = new(messageLength);
                 }
 
-                messageContainer.Write(message);
+                messageContainer.memory.Write(message);
                 int count = receivers.Count;
                 for (int i = 0; i < count; i++)
                 {
-                    receivers[i].Invoke(messageContainer);
+                    receivers[i].Invoke(messageContainer.memory);
                 }
+
+                messageContainers.Push(messageContainer);
             }
         }
 
@@ -289,24 +325,34 @@ namespace Simulation
         /// </summary>
         public unsafe void Broadcast<T>(ref T message) where T : unmanaged
         {
+            ThrowIfDisposed();
+
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
                 int messageLength = sizeof(T);
-                if (messageLength > messageCapacity)
+                if (messageContainers.TryPop(out Message messageContainer))
                 {
-                    messageCapacity = messageLength.GetNextPowerOf2();
-                    MemoryAddress.Resize(ref messageContainer, messageCapacity);
+                    if (messageLength > messageContainer.byteCapacity)
+                    {
+                        messageContainer.byteCapacity = messageLength.GetNextPowerOf2();
+                        MemoryAddress.Resize(ref messageContainer.memory, messageContainer.byteCapacity);
+                    }
+                }
+                else
+                {
+                    messageContainer = new(messageLength);
                 }
 
-                messageContainer.Write(message);
+                messageContainer.memory.Write(message);
                 int count = receivers.Count;
                 for (int i = 0; i < count; i++)
                 {
-                    receivers[i].Invoke(messageContainer);
+                    receivers[i].Invoke(messageContainer.memory);
                 }
 
-                message = messageContainer.Read<T>();
+                message = messageContainer.memory.Read<T>();
+                messageContainers.Push(messageContainer);
             }
         }
 
@@ -330,6 +376,32 @@ namespace Simulation
             if (index < 0 || index >= systems.Count)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), $"Index {index} is out of bounds. Count: {systems.Count}");
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ThrowIfDisposed()
+        {
+            if (IsDisposed)
+            {
+                throw new ObjectDisposedException(nameof(Simulator), "Simulator has already been disposed");
+            }
+        }
+
+        private struct Message : IDisposable
+        {
+            public int byteCapacity;
+            public MemoryAddress memory;
+
+            public Message(int byteCapacity)
+            {
+                this.byteCapacity = byteCapacity;
+                memory = MemoryAddress.Allocate(byteCapacity);
+            }
+
+            public void Dispose()
+            {
+                memory.Dispose();
             }
         }
     }

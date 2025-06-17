@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
@@ -10,10 +10,10 @@
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <Authors>popcron</Authors>
     <Company>simulation-tree</Company>
-    <Description>Logic upon data</Description>
+    <Description>Faciliates event based systems.</Description>
     <RepositoryUrl>https://github.com/simulation-tree/simulation</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>ecs</PackageTags>
+    <PackageTags></PackageTags>
     <Title>Simulation Core</Title>
     <RootNamespace>Simulation</RootNamespace>
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
@@ -29,13 +29,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\collections\source\Collections.csproj"/>
-    <ProjectReference Include="..\..\types\core\Types.Core.csproj"/>
+    <ProjectReference Include="..\..\collections\source\Collections.csproj" />
+    <ProjectReference Include="..\..\types\core\Types.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="bin/**/*" Pack="true" PackagePath="lib" Visible="false"/>
-    <Content Include="buildTransitive/**/*" Pack="true" PackagePath="buildTransitive"/>
+    <Content Include="bin/**/*" Pack="true" PackagePath="lib" Visible="false" />
+    <Content Include="buildTransitive/**/*" Pack="true" PackagePath="buildTransitive" />
   </ItemGroup>
 
 </Project>

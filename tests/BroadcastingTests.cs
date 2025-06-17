@@ -83,5 +83,25 @@
             Assert.That(a.time, Is.EqualTo(10));
             Assert.That(b.time, Is.EqualTo(11));
         }
+
+        [Test]
+        public void NestedEvents()
+        {
+            NestedSystem nested = new(Simulator);
+            TimeSystem a = new();
+            TimeSystem b = new();
+            using TextSystem text = new(Simulator);
+            Simulator.Add(a);
+            Simulator.Add(nested);
+            Simulator.Add(b);
+            Simulator.Add(text);
+            Assert.That(a.time, Is.EqualTo(0));
+            Assert.That(b.time, Is.EqualTo(0));
+            Assert.That(text.Text.ToString(), Is.EqualTo(string.Empty));
+            Simulator.Broadcast(new AppendCharacter('a'));
+            Assert.That(a.time, Is.EqualTo(5));
+            Assert.That(b.time, Is.EqualTo(5));
+            Assert.That(text.Text.ToString(), Is.EqualTo("5a"));
+        }
     }
 }
