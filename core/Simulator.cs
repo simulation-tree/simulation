@@ -295,6 +295,7 @@ namespace Simulation
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
+                //get or create message container
                 int messageLength = sizeof(T);
                 if (messageContainers.TryPop(out Message messageContainer))
                 {
@@ -309,6 +310,7 @@ namespace Simulation
                     messageContainer = new(messageLength);
                 }
 
+                //broadcast
                 messageContainer.memory.Write(message);
                 int count = receivers.Count;
                 for (int i = 0; i < count; i++)
@@ -316,6 +318,7 @@ namespace Simulation
                     receivers[i].Invoke(messageContainer.memory);
                 }
 
+                //return message container
                 messageContainers.Push(messageContainer);
             }
         }
@@ -330,6 +333,7 @@ namespace Simulation
             TypeMetadata messageType = TypeMetadata.GetOrRegister<T>();
             if (receiversMap.TryGetValue(messageType, out List<Receive>? receivers))
             {
+                //get or create message container
                 int messageLength = sizeof(T);
                 if (messageContainers.TryPop(out Message messageContainer))
                 {
@@ -344,6 +348,7 @@ namespace Simulation
                     messageContainer = new(messageLength);
                 }
 
+                //broadcast
                 messageContainer.memory.Write(message);
                 int count = receivers.Count;
                 for (int i = 0; i < count; i++)
@@ -351,6 +356,7 @@ namespace Simulation
                     receivers[i].Invoke(messageContainer.memory);
                 }
 
+                //return message container
                 message = messageContainer.memory.Read<T>();
                 messageContainers.Push(messageContainer);
             }
