@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 using Types;
 using Unmanaged;
 
@@ -7,14 +8,19 @@ namespace Simulation
     /// <summary>
     /// Container of a message receiving callback.
     /// </summary>
-    public readonly struct MessageHandler
+    public readonly struct MessageHandler : IDisposable
     {
         /// <summary>
         /// Type of message this handler can receive.
         /// </summary>
         public readonly TypeMetadata type;
 
-        internal readonly GCHandle receiver;
+        private readonly GCHandle receiver;
+
+        /// <summary>
+        /// The callback that receives messages of the specified type.
+        /// </summary>
+        public readonly Receive Callback => (Receive)receiver.Target!;
 
         /// <summary>
         /// Initializes a new container instance.
@@ -23,6 +29,14 @@ namespace Simulation
         {
             this.type = type;
             this.receiver = GCHandle.Alloc(receiver, GCHandleType.Normal);
+        }
+
+        /// <summary>
+        /// Disposes the message handler, freeing the receiver callback.
+        /// </summary>
+        public readonly void Dispose()
+        {
+            receiver.Free();
         }
 
         /// <summary>

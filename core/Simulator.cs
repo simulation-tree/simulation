@@ -191,8 +191,8 @@ namespace Simulation
                     }
 
                     locators[i] = new(handler.type, receivers.Count);
-                    receivers.Add((Receive)handler.receiver.Target!);
-                    handler.receiver.Free();
+                    receivers.Add(handler.Callback);
+                    handler.Dispose();
                 }
 
                 receiverLocators.Add(locators);
