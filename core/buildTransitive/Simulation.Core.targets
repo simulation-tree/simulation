@@ -3,7 +3,7 @@
 
     <ItemGroup>
         <Reference Include="Simulation.Core">
-            <HintPath>$(MSBuildThisFileDirectory)..\lib\net9.0\$(Configuration)\Simulation.Core.dll</HintPath>
+            <HintPath>$(MSBuildThisFileDirectory)..\lib\$(TargetFramework)\$(Configuration)\Simulation.Core.dll</HintPath>
         </Reference>
     </ItemGroup>
 
