@@ -28,13 +28,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\collections\source\Collections.csproj"/>
-    <ProjectReference Include="..\..\types\core\Types.Core.csproj"/>
+    <ProjectReference Include="..\..\collections\source\Collections.csproj" />
+    <ProjectReference Include="..\..\types\core\Types.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="bin/**/*" Pack="true" PackagePath="lib" Visible="false"/>
-    <Content Include="buildTransitive/**/*" Pack="true" PackagePath="buildTransitive"/>
+    <Content Include="bin/**/*" Pack="true" PackagePath="lib" Visible="false" />
+    <Content Include="buildTransitive/**/*" Pack="true" PackagePath="buildTransitive" />
   </ItemGroup>
 
 </Project>

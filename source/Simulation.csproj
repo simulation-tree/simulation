@@ -28,8 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\generator\Simulation.Generator.csproj"/>
-    <ProjectReference Include="..\core\Simulation.Core.csproj"/>
+    <ProjectReference Include="..\generator\Simulation.Generator.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\core\Simulation.Core.csproj" />
   </ItemGroup>
 
 </Project>
