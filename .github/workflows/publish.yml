@@ -84,16 +84,16 @@ jobs:
         run: dotnet nuget add source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --name github --username ${{ github.repository_owner }} --password ${{ github.token }} --store-password-in-clear-text
             
       - name: Publish `Simulation.Core`
-        run: dotnet nuget push Simulation.Core.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
+        run: dotnet nuget push SimulationTree.Simulation.Core.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
         env:
           NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
       
       - name: Publish `Simulation.Generator`
-        run: dotnet nuget push Simulation.Generator.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
+        run: dotnet nuget push SimulationTree.Simulation.Generator.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
         env:
           NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
       
       - name: Publish `Simulation`
-        run: dotnet nuget push Simulation.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
+        run: dotnet nuget push SimulationTree.Simulation.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
         env:
           NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}

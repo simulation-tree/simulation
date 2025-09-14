@@ -9,7 +9,7 @@
     <IsTrimmable>True</IsTrimmable>
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <Authors>popcron</Authors>
-    <Company>simulation-tree</Company>
+    <Company>Simulation Tree</Company>
     <Description>Faciliates event based systems.</Description>
     <RepositoryUrl>https://github.com/simulation-tree/simulation</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -11,7 +11,7 @@
     <GenerateDocumentationFile>True</GenerateDocumentationFile>
     <Title>Simulation</Title>
     <Authors>popcron</Authors>
-    <Company>simulation-tree</Company>
+    <Company>Simulation Tree</Company>
     <Description>Assists programming with value types</Description>
     <RepositoryUrl>https://github.com/simulation-tree/simulation</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
