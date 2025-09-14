@@ -12,6 +12,7 @@
     <Company>simulation-tree</Company>
     <RepositoryUrl>https://github.com/simulation-tree/simulation</RepositoryUrl>
     <PackageId>SimulationTree.Simulation.Generator</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
