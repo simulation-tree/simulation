@@ -10,11 +10,9 @@ Simulators contain and update systems:
 ```cs
 public static void Main()
 {
-    using World world = new();
-    using Simulator simulator = new(world);
-
+    using Simulator simulator = new();
     simulator.Add(new ProgramSystems());
-    simulator.Update(world);
+    // do work
     simulator.Remove<ProgramSystems>();
 }
 
