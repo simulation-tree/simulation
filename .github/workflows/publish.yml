@@ -80,20 +80,35 @@ jobs:
       - name: Pack `Simulation`
         run: dotnet pack "${{ github.event.repository.name }}/source" /p:Version=${VERSION} --no-build --output .
 
-      - name: Add NuGet Source
+      - name: Add GitHub source
         run: dotnet nuget add source https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json --name github --username ${{ github.repository_owner }} --password ${{ github.token }} --store-password-in-clear-text
             
-      - name: Publish `Simulation.Core`
-        run: dotnet nuget push SimulationTree.Simulation.Core.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
+      - name: Publish `Simulation.Core` to GitHub registry
+        run: dotnet nuget push SimulationTree.Simulation.Core.${VERSION}.nupkg --source github --api-key ${API_KEY}
         env:
-          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+          API_KEY: ${{ secrets.NUGET_TOKEN_GITHUB }}
       
-      - name: Publish `Simulation.Generator`
-        run: dotnet nuget push SimulationTree.Simulation.Generator.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
+      - name: Publish `Simulation.Core` to official registry
+        run: dotnet nuget push SimulationTree.Simulation.Core.${VERSION}.nupkg --source nuget.org --api-key ${API_KEY}
         env:
-          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+          API_KEY: ${{ secrets.NUGET_TOKEN_OFFICIAL }}
       
-      - name: Publish `Simulation`
-        run: dotnet nuget push SimulationTree.Simulation.${VERSION}.nupkg --source github --api-key ${NUGET_TOKEN}
+      - name: Publish `Simulation.Generator` to GitHub registry
+        run: dotnet nuget push SimulationTree.Simulation.Generator.${VERSION}.nupkg --source github --api-key ${API_KEY}
         env:
-          NUGET_TOKEN: ${{ secrets.NUGET_TOKEN }}
+          API_KEY: ${{ secrets.NUGET_TOKEN_GITHUB }}
+      
+      - name: Publish `Simulation.Generator` to official registry
+        run: dotnet nuget push SimulationTree.Simulation.Generator.${VERSION}.nupkg --source nuget.org --api-key ${API_KEY}
+        env:
+          API_KEY: ${{ secrets.NUGET_TOKEN_OFFICIAL }}
+      
+      - name: Publish `Simulation` to GitHub registry
+        run: dotnet nuget push SimulationTree.Simulation.${VERSION}.nupkg --source github --api-key ${API_KEY}
+        env:
+          API_KEY: ${{ secrets.NUGET_TOKEN_GITHUB }}
+      
+      - name: Publish `Simulation` to official registry
+        run: dotnet nuget push SimulationTree.Simulation.${VERSION}.nupkg --source nuget.org --api-key ${API_KEY}
+        env:
+          API_KEY: ${{ secrets.NUGET_TOKEN_OFFICIAL }}
